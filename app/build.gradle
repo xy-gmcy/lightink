@@ -42,10 +42,6 @@ android {
         }
     }
 
-    lintOptions {
-        checkReleaseBuilds false
-        abortOnError false
-    }
     compileOptions {
         sourceCompatibility = 1.8
         targetCompatibility = 1.8
@@ -55,6 +51,16 @@ android {
     }
     androidExtensions {
         experimental = true
+    }
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging false
+        }
+    }
+    namespace 'cn.lightink.reader'
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
     }
 }
 
