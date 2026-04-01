@@ -23,6 +23,19 @@ class JavaScriptTranscoder(private val host: String, private val bookSource: Str
     fun bookSource() = javaScript<BookSourceInfo?> { context ->
         try {
             val json = context.globalObject.getProperty("bookSource").cast(JSString::class.java).string
+            val ranks = context.evaluate( "typeof ranks !== 'undefined' ? JSON.stringify(ranks) : \"\";", filename, String::class.java )
+            var result = json.decodeJson<BookSourceInfo>()
+            if (result.ranks.isEmpty() && !ranks.isNullOrEmpty()) {
+                result = BookSourceInfo(
+                    result.name,
+                    result.url,
+                    result.version,
+                    result.authorization,
+                    result.cookies,
+                    ranks.decodeJson<List<Rank>>()
+                )
+                return@javaScript result
+            }
             return@javaScript json.decodeJson<BookSourceInfo>()
         } catch (e: Exception) {
             Log.e("JavaScriptTranscoder", "", e)

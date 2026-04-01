@@ -14,6 +14,7 @@ import cn.lightink.reader.module.SearchObserver
 import cn.lightink.reader.module.booksource.BookSourceJson
 import cn.lightink.reader.module.booksource.BookSourceParser
 import cn.lightink.reader.module.booksource.SearchMetadata
+import cn.lightink.reader.transcode.JavaScriptTranscoder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
@@ -59,6 +60,34 @@ class BookRankController : ViewModel() {
             }
         }
         return liveData
+    }
+
+    /**
+     * js查询排行榜更多数据
+     */
+    fun loadMoreJs(js: JavaScriptTranscoder, page: Int, title: String, category: String): Pair<LiveData<List<SearchMetadata>>, Boolean> {
+        val liveData = MutableLiveData<List<SearchMetadata>>()
+        var end = false
+        viewModelScope.launch(Dispatchers.IO) {
+            val response = js.rank(title, category, page)
+            val list = response.books.map {
+                SearchMetadata(
+                    name = it.name,
+                    author = it.author,
+                    cover = it.cover,
+                    summary = "",
+                    detail = it.detail
+                )
+            }
+            end = response.end
+            if (list.isNotEmpty() && bookRankDataList.none { it.detail == list.firstOrNull()?.detail }) {
+                bookRankDataList.addAll(list)
+                liveData.postValue(bookRankDataList.toList())
+            } else {
+                liveData.postValue(emptyList())
+            }
+        }
+        return Pair(liveData, end)
     }
 
     fun refresh() {

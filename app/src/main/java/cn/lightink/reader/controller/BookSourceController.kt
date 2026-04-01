@@ -76,9 +76,12 @@ class BookSourceController : ViewModel() {
                 if (bookSource != null) {
                     //已安装需要更新版本
                     if (bookSource.version < info.version) {
+                        if (!bookSource.rank && info.ranks.isNotEmpty() && !Room.bookRank().isExist(info.url)) {
+                            Room.bookRank().insert(BookRank(info.url, info.name))
+                        }
                         bookSource.name = info.name
                         bookSource.version = info.version
-                        bookSource.rank = false
+                        bookSource.rank = bookSource.rank || info.ranks.isNotEmpty()
                         bookSource.account = info.authorization.isNotEmpty()
                         bookSource.content = javaScript
                         Room.bookSource().update(bookSource)
@@ -90,13 +93,16 @@ class BookSourceController : ViewModel() {
                             0, info.name,
                             info.url,
                             info.version,
-                            false,
+                            info.ranks.isNotEmpty(),
                             info.authorization.isNotEmpty(),
                             baseUrl,
                             "js",
                             javaScript
                         )
                     )
+                    if (info.ranks.isNotEmpty() && !Room.bookRank().isExist(info.url)) {
+                        Room.bookRank().insert(BookRank(info.url, info.name))
+                    }
                 }
             }
         } else {

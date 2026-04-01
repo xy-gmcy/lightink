@@ -16,6 +16,8 @@ import cn.lightink.reader.module.*
 import cn.lightink.reader.module.booksource.BookSourceJson
 import cn.lightink.reader.module.booksource.BookSourceParser
 import cn.lightink.reader.module.booksource.SearchMetadata
+import cn.lightink.reader.transcode.entity.KeyValue
+import cn.lightink.reader.transcode.entity.Rank
 import cn.lightink.reader.ui.base.BottomSelectorDialog
 import cn.lightink.reader.ui.base.LifecycleFragment
 import cn.lightink.reader.ui.book.BookDetailActivity
@@ -35,12 +37,39 @@ class BookRankFragment : LifecycleFragment() {
     private var category: BookSourceJson.Category? = null
     private var page = -1
 
+    /**
+     * js变量
+     */
+    private var groupJs: Rank? = null
+    private var categoryJs: KeyValue? = null
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_book_rank, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        if (bookSource.type == "js") {
+            val ranks = bookSource.js.bookSource()?.ranks.orEmpty()
+            if (ranks.isEmpty()) return
+            groupJs = ranks.getOrElse(bookRank.preferred) { ranks.firstOrNull().apply {bookRank.preferred = 0}}
+            page = 0
+            view.mBookRankGroupRecycler.addItemDecoration(VerticalDividerItemDecoration(view.context, R.dimen.padding_horizontal_half))
+            view.mBookRankGroupRecycler.isVisible = ranks.isNotEmpty()
+            view.mBookRankGroupRecycler.adapter = groupAdapterJs.apply { submitList(ranks) }
+            view.mBookRankCategory.isVisible = groupJs?.categories?.isNotEmpty() == true
+            view.mBookRankCategory.setOnClickListener { showCategoryDialogJs() }
+            if (groupJs?.categories?.isNotEmpty() == true) {
+                categoryJs = groupJs!!.categories.firstOrNull { it.key == bookRank.category } ?: groupJs!!.categories.firstOrNull()
+                view.mBookRankCategory.text = categoryJs?.value
+            }
+            view.mBookRankRecycler.layoutManager = RVLinearLayoutManager(activity)
+            view.mBookRankRecycler.adapter = adapter
+            view.mBookRankRecycler.setOnLoadMoreListener { onLoadMoreJs() }
+            return
+        }
+
         group = bookSourceJson.rank.getOrElse(bookRank.preferred) { bookSourceJson.rank.firstOrNull().apply { bookRank.preferred = 0 } }
         page = group?.page ?: -1
         view.mBookRankGroupRecycler.addItemDecoration(VerticalDividerItemDecoration(view.context, R.dimen.padding_horizontal_half))
@@ -127,6 +156,58 @@ class BookRankFragment : LifecycleFragment() {
     companion object {
         fun newInstance(rank: BookRank) = BookRankFragment().apply {
             arguments = Bundle().apply { putParcelable(INTENT_BOOK_RANK, rank) }
+        }
+    }
+
+    /**
+     * js相关rank函数
+     */
+    private fun showCategoryDialogJs() {
+        BottomSelectorDialog(requireActivity(), getString(R.string.select_category), groupJs?.categories.orEmpty()) { it.value }.callback { selected ->
+            if (categoryJs != selected) {
+                bookRank.apply { category = selected.key }
+                categoryJs = selected
+                onRefreshJs()
+            }
+        }.show()
+    }
+
+    private fun onRefreshJs() {
+        Room.bookRank().update(bookRank)
+        view?.mBookRankCategory?.isVisible = categoryJs != null
+        view?.mBookRankCategory?.text = categoryJs?.value
+        page = 0
+        controller.refresh()
+        adapter.submitList(emptyList())
+        groupAdapterJs.notifyItemRangeChanged(0, groupAdapterJs.itemCount)
+        onLoadMoreJs()
+    }
+
+    private fun onLoadMoreJs() {
+        if (view?.mBookRankLoading == null) return
+        if (groupJs == null) return
+        val categoryKey = categoryJs?.key ?: ""
+        view?.mBookRankLoading?.isVisible = true
+        val (liveData, end) =  controller.loadMoreJs(bookSource.js, page, groupJs!!.title.key, categoryKey)
+        liveData.observe(viewLifecycleOwner, Observer { list ->
+            view?.mBookRankRecycler?.finishLoadMore(end)
+            view?.mBookRankLoading?.isVisible = false
+            if (list.isNotEmpty()) {
+                adapter.submitList(list)
+            }
+            page += 1
+        })
+    }
+
+    private val groupAdapterJs = ListAdapter<Rank>(R.layout.item_book_rank_group) { item, rank ->
+        item.view.mBookRankTitle.text = rank.title.value
+        item.view.mBookRankTitle.paint.isFakeBoldText = item.adapterPosition == bookRank.preferred
+        item.view.mBookRankTitle.setTextColor(item.view.context.getColor(if (item.adapterPosition == bookRank.preferred) R.color.colorAccent else R.color.colorContent))
+        item.view.setOnClickListener {
+            Room.bookRank().update(bookRank.apply { preferred = item.adapterPosition })
+            groupJs = rank
+            categoryJs = rank.categories.firstOrNull()
+            onRefreshJs()
         }
     }
 
