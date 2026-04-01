@@ -13,6 +13,7 @@ import cn.lightink.reader.ktx.openFullscreen
 import cn.lightink.reader.ktx.toast
 import cn.lightink.reader.module.INTENT_BOOK_SOURCE
 import cn.lightink.reader.module.Room
+import cn.lightink.reader.transcode.JavaScriptTranscoder
 import cn.lightink.reader.ui.base.LifecycleActivity
 import kotlinx.android.synthetic.main.activity_book_source_auth.*
 
@@ -32,7 +33,17 @@ class BookSourceAuthActivity : LifecycleActivity() {
         mAuthWebView.settings.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
         mAuthWebView.webViewClient = buildClient()
         mAuthWebView.webChromeClient = object : WebChromeClient() {}
-        mAuthWebView.loadUrl(bookSource?.json?.auth?.login!!)
+
+        //区分js和json的登录url
+        if (bookSource!!.type == "js") {
+            val js = JavaScriptTranscoder(
+                bookSource!!.url,
+                bookSource!!.content
+            )
+            mAuthWebView.loadUrl(js.bookSource()!!.authorization)
+            js.loginVerify()
+        } else mAuthWebView.loadUrl(bookSource?.json?.auth?.login!!)
+
     }
 
     private fun buildClient() = object : WebViewClient() {

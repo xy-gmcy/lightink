@@ -33,7 +33,11 @@ class BookSourceController : ViewModel() {
     fun verify(bookSource: BookSource): LiveData<Boolean> {
         val result = MutableLiveData<Boolean>()
         viewModelScope.launch(Dispatchers.IO) {
-            result.postValue(BookSourceParser(bookSource).verify())
+            if (bookSource.type == "js") {
+                result.postValue(JavaScriptTranscoder(bookSource.url, bookSource.content).loginVerify())
+            } else {
+                result.postValue(BookSourceParser(bookSource).verify())
+            }
         }
         return result
     }
@@ -75,7 +79,7 @@ class BookSourceController : ViewModel() {
                         bookSource.name = info.name
                         bookSource.version = info.version
                         bookSource.rank = false
-                        bookSource.account = false
+                        bookSource.account = info.authorization.isNotEmpty()
                         bookSource.content = javaScript
                         Room.bookSource().update(bookSource)
                     }
@@ -87,7 +91,7 @@ class BookSourceController : ViewModel() {
                             info.url,
                             info.version,
                             false,
-                            false,
+                            info.authorization.isNotEmpty(),
                             baseUrl,
                             "js",
                             javaScript

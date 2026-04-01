@@ -151,4 +151,17 @@ class JavaScriptTranscoder(private val host: String, private val bookSource: Str
         }
     }
 
+    /**
+     * 授权验证
+     */
+    fun loginVerify() = javaScript<Boolean> { context ->
+        try {
+            val response = context.evaluate("verify();", filename, Boolean::class.java)
+            return@javaScript response
+        } catch (e: Exception) {
+            Log.w("JavaScriptTranscoder", "verify error, bookSource: $host", e)
+            return@javaScript false
+        }
+    }
+
 }
