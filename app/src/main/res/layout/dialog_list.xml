@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingBottom="@dimen/dimen1v"
+    android:orientation="vertical">
+
+    <cn.lightink.reader.widget.TopbarView
+        android:id="@+id/mTopbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <cn.lightink.reader.widget.BoldTextView
+            android:id="@+id/mTopbarSubmit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/import_book"
+            android:drawableStart="@drawable/ic_import"
+            style="@style/Lightink.Topbar.Button"/>
+        <cn.lightink.reader.widget.BoldTextView
+            android:textSize="16sp"
+            android:ellipsize="middle"
+            android:gravity="center"
+            android:id="@+id/mTopbarTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            android:layout_centerInParent="true"
+            android:layout_marginStart="105dp"
+            android:layout_marginEnd="105dp"/>
+    </cn.lightink.reader.widget.TopbarView>
+
+    <cn.lightink.reader.widget.FlexLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="@dimen/margin_vertical"
+        android:layout_below="@+id/mTopbar"
+        style="@style/AppTheme.Flexible">
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/mBooKSourceRecycler"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:overScrollMode="never"
+            android:paddingStart="@dimen/dimen0x"
+            android:paddingEnd="@dimen/dimen0x" />
+    </cn.lightink.reader.widget.FlexLayout>
+
+</LinearLayout>

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:background="@drawable/selected_background"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:animateLayoutChanges="true"
+    android:paddingStart="@dimen/padding_horizontal"
+    android:paddingEnd="@dimen/padding_horizontal">
+
+    <CheckBox
+        android:id="@+id/mCheckableBookSource"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_weight="2"
+        android:layout_marginStart="@dimen/padding_medium"
+        android:button="@drawable/ic_check_box"
+        android:padding="@dimen/padding_medium"
+        android:textSize="14sp"
+        android:textColor="@color/colorTitle"
+        android:clickable="false"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
+        android:longClickable="false" />
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:id="@+id/mSourceLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:animateLayoutChanges="true"
+        android:layout_marginStart="@dimen/margin"
+        android:layout_marginEnd="@dimen/margin">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:textSize="12sp"
+                android:textColor="@color/colorContent"
+                android:ellipsize="middle"
+                android:gravity="center_horizontal"
+                android:id="@+id/mVersion"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"/>
+            <TextView
+                android:textSize="12sp"
+                android:textColor="@color/colorContent"
+                android:ellipsize="middle"
+                android:gravity="center_horizontal"
+                android:id="@+id/mType"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"/>
+        </LinearLayout>
+        <cn.lightink.reader.widget.BoldTextView
+            android:textSize="12sp"
+            android:textColor="@color/colorContent"
+            android:ellipsize="middle"
+            android:gravity="center_horizontal"
+            android:id="@+id/mUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+    </LinearLayout>
+
+
+</LinearLayout>

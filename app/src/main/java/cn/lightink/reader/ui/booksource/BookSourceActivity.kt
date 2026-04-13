@@ -6,6 +6,7 @@ import android.content.res.ColorStateList
 import android.graphics.Typeface
 import android.os.Bundle
 import android.view.Gravity
+import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.core.view.isVisible
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
@@ -19,6 +20,7 @@ import cn.lightink.reader.module.RVLinearLayoutManager
 import cn.lightink.reader.ui.base.BottomSelectorDialog
 import cn.lightink.reader.ui.base.LifecycleActivity
 import cn.lightink.reader.ui.base.PopupMenu
+import cn.lightink.reader.ui.discover.storage.StorageActivity
 import cn.lightink.reader.widget.VerticalDividerItemDecoration
 import kotlinx.android.synthetic.main.activity_book_source.*
 import kotlinx.android.synthetic.main.item_booksource.view.*
@@ -42,9 +44,14 @@ class BookSourceActivity : LifecycleActivity() {
     }
 
     private fun showPopup() {
-        PopupMenu(this).gravity(Gravity.END).items(R.string.booksource_import).callback { item ->
+        PopupMenu(this).gravity(Gravity.END).items(R.string.booksource_import, R.string.local_booksource_import).callback { item ->
             when (item) {
                 R.string.booksource_import -> startActivity(BookSourceVerifyActivity::class)
+                R.string.local_booksource_import -> startActivity(
+                    Intent(this, StorageActivity::class.java).apply {
+                        putExtra(StorageActivity.EXTRA_PAGE, StorageActivity.PAGE_BOOK_SOURCE)
+                    }
+                )
             }
         }.show(mTopbar)
     }

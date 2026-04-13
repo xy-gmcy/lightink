@@ -44,6 +44,7 @@
 
     <!-- Discover -->
     <string name="discover_source">书源</string>
+    <string name="discover_storage">图书</string>
     <string name="discover_rank">排行</string>
     <string name="discover_feed">RSS</string>
     <string name="discover_forum">社区</string>
@@ -305,5 +306,13 @@
     <string name="channel_books_description">缓存、追更、导入等通知</string>
     <string name="channel_media_title">朗读</string>
     <string name="channel_media_description">文字转语音（TTS）通知</string>
+
+
+    <string name="import_book">导入</string>
+    <string name="book_chapter_regex">章节正则</string>
+    <string name="apply">应用</string>
+    <string name="search_storage_hint">搜索文件名</string>
+    <string name="default_storage_path">设为默认目录</string>
+    <string name="local_booksource_import">本地导入</string>
 
 </resources>

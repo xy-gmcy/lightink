@@ -27,6 +27,17 @@
             android:paddingTop="4dp">
 
             <TextView
+                android:id="@+id/mDiscoverStorage"
+                style="@style/Lightink.Item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/selected_background"
+                android:drawableStart="@drawable/ic_discover_folder"
+                android:paddingStart="@dimen/padding"
+                android:paddingEnd="@dimen/padding"
+                android:text="@string/discover_storage"/>
+
+            <TextView
                 android:id="@+id/mDiscoverBookSource"
                 style="@style/Lightink.Item"
                 android:layout_width="match_parent"

@@ -1,5 +1,6 @@
 package cn.lightink.reader.ui.discover
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -14,6 +15,7 @@ import cn.lightink.reader.ui.base.LifecycleFragment
 import cn.lightink.reader.ui.booksource.BookSourceActivity
 import cn.lightink.reader.ui.booksource.rank.BookRankActivity
 import cn.lightink.reader.ui.discover.setting.SettingActivity
+import cn.lightink.reader.ui.discover.storage.StorageActivity
 import cn.lightink.reader.ui.feed.FeedActivity
 import kotlinx.android.synthetic.main.fragment_discover.*
 
@@ -40,6 +42,13 @@ class DiscoverFragment : LifecycleFragment() {
             }
         }
         mDiscoverNight.parentView.setOnClickListener { mDiscoverNight.toggle() }
+        mDiscoverStorage.setOnClickListener {
+            startActivity(
+                Intent(requireContext(), StorageActivity::class.java).apply {
+                    putExtra(StorageActivity.EXTRA_PAGE, StorageActivity.PAGE_BOOK)
+                }
+            )
+        }
         mDiscoverBookSource.setOnClickListener { startActivity(BookSourceActivity::class) }
         mDiscoverRank.setOnClickListener { startActivity(BookRankActivity::class) }
         mDiscoverFeed.setOnClickListener { startActivity(FeedActivity::class) }

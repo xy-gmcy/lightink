@@ -77,7 +77,8 @@ object Preferences : SharedPreferences.OnSharedPreferenceChangeListener {
     }
 
     private val ignoreKeys = listOf(Key.JWT, Key.TOKEN, Key.UUID, Key.USER, Key.HAS_NAVIGATION, Key.HAS_NOTCH, Key.READER_HEIGHT, Key.BOOKSHELF, Key.LAST_FEED, Key.SIGN, Key.BOOKSHELF_SYNC_VERSION,
-            Key.BOOKSOURCE_SYNC_VERSION, Key.SETTINGS_SYNC_VERSION, Key.LIGHT, Key.BOOKSHELF_SYNC_TIME, Key.BOOK_CHECK_UPDATE_TIME, Key.FEED_CHECK_UPDATE_TIME, Key.BOOKSHELF_TIPS)
+            Key.BOOKSOURCE_SYNC_VERSION, Key.SETTINGS_SYNC_VERSION, Key.LIGHT, Key.BOOKSHELF_SYNC_TIME, Key.BOOK_CHECK_UPDATE_TIME, Key.FEED_CHECK_UPDATE_TIME, Key.BOOKSHELF_TIPS,
+            Key.BOOK_STORAGE_PATH, Key.SOURCE_STORAGE_PATH)
 
     enum class Key {
         //JWT
@@ -180,6 +181,9 @@ object Preferences : SharedPreferences.OnSharedPreferenceChangeListener {
         //阅读偏好 内置状态栏
         CUSTOM_STATUS_BAR,
         //阅读偏好 显示标题
-        SHOW_TITLE
+        SHOW_TITLE,
+
+        BOOK_STORAGE_PATH,
+        SOURCE_STORAGE_PATH
     }
 }

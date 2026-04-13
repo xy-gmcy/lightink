@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_margin="@dimen/margin"
+    android:background="@drawable/bg_dialog_round"
+    android:orientation="vertical">
+
+    <cn.lightink.reader.widget.BoldTextView
+        android:id="@+id/mDialogTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="@dimen/margin_horizontal"
+        android:textSize="14sp" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/mDialogTextFieldLayout"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/margin_horizontal"
+        app:boxStrokeColor="@color/colorAccent"
+        app:boxStrokeErrorColor="@color/colorRed"
+        app:errorIconTint="@color/colorRed"
+        app:errorTextColor="@color/colorRed"
+        app:hintAnimationEnabled="true"
+        app:hintEnabled="true"
+        app:hintTextColor="@color/colorAccent">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/mDialogTextField"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAlignment="center"
+            android:imeOptions="actionSend"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:textColor="@color/colorTitle"
+            android:textCursorDrawable="@drawable/ic_input_cursor">
+
+            <requestFocus />
+        </com.google.android.material.textfield.TextInputEditText>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/dimenStroke"
+        android:background="@color/colorStroke" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <cn.lightink.reader.widget.BoldTextView
+            android:id="@+id/mDialogCancel"
+            style="@style/Lightink.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="@dimen/margin"
+            android:background="@drawable/selected_btn_sign"
+            android:padding="@dimen/padding"
+            android:text="@string/cancel" />
+
+        <View
+            android:layout_width="@dimen/dimenStroke"
+            android:layout_height="match_parent"
+            android:padding="@dimen/padding"
+            android:layout_weight="1" />
+
+        <cn.lightink.reader.widget.BoldTextView
+            android:id="@+id/mDialogSubmit"
+            style="@style/Lightink.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="@dimen/margin"
+            android:background="@drawable/selected_btn_sign"
+            android:padding="@dimen/padding"
+            android:text="@string/sure" />
+
+    </LinearLayout>
+
+</LinearLayout>
