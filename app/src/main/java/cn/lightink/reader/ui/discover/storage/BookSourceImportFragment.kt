@@ -15,7 +15,6 @@ import cn.lightink.reader.R
 import cn.lightink.reader.ktx.toast
 import cn.lightink.reader.module.Preferences
 import cn.lightink.reader.module.ListAdapter
-import cn.lightink.reader.module.Room
 import cn.lightink.reader.module.RVLinearLayoutManager
 import cn.lightink.reader.module.storage.BookSourcePreview
 import cn.lightink.reader.module.storage.SourceParser
@@ -42,8 +41,8 @@ class BookSourceImportFragment : StorageFragment(){
         val parser = SourceParser()
         val list = when (file.extension.toLowerCase()) {
             "json" -> {
-                if (parser.isRepository(file)) parser.getRepository(file)
-                    .apply {
+                if (parser.isRepository(file))
+                    parser.getRepository(file).apply {
                         if (this.isNullOrEmpty())
                             return requireContext().toast("书源仓库为空")
                     }
@@ -52,30 +51,28 @@ class BookSourceImportFragment : StorageFragment(){
             "js" -> listOfNotNull(parser.jsToSource(file))
             else -> return requireContext().toast("暂不支持该格式文件")
         }.apply {
-            if (this.isNullOrEmpty())
-                return requireContext().toast("书源不合法")
+            if (this.isNullOrEmpty()) return requireContext().toast("书源不合法")
         }?.map { BookSourcePreview(it) }
         if (list?.size == 1) {
             if (list.first().local != null) {
                 BookSourceDialog(requireActivity(), list.first()) { isOK ->
                     if (isOK) {
-                        Room.bookSource().update(list.first().source)
+                        parser.sourceImport(list)
                         requireContext().toast("更新成功")
                     }
                 }.show()
             }
             else {
-                Room.bookSource().install(list.first().source)
+                parser.sourceImport(list)
                 requireContext().toast("导入成功")
             }
         }
         else {
             RepositoryDialog(file.nameWithoutExtension, list!!).callback { list ->
-                list.filter { it.checked }.forEach {
-                    if (it.local == null) {
-                        Room.bookSource().install(it.source)
-                    } else {
-                        Room.bookSource().update(it.source)
+                list.filter { it.checked }.apply {
+                    if (this.isNotEmpty()) {
+                        parser.sourceImport(this)
+                        requireContext().toast("导入成功")
                     }
                 }
             }.show(this.childFragmentManager)

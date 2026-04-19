@@ -5,7 +5,6 @@ import android.view.LayoutInflater
 import android.view.View
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.MutableLiveData
 import androidx.recyclerview.widget.LinearLayoutManager
 import cn.lightink.reader.R
 import cn.lightink.reader.controller.ImportController
@@ -200,7 +199,7 @@ class TXTConvertActivity : AppCompatActivity() {
                 val finalChapters = withContext(Dispatchers.IO) {
                     parser.buildFinalChapters(chapters)
                 }
-                controller.publish(metadata!!, finalChapters, bookshelf)
+                controller.publish(metadata!!, finalChapters, emptyList(), bookshelf)
                 mTXTConvertLoading.visibility = View.GONE
                 finish()
             }

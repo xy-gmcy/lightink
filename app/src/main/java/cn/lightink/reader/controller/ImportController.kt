@@ -13,9 +13,11 @@ import cn.lightink.reader.model.MPMetadata
 import cn.lightink.reader.module.MP_ENTER
 import cn.lightink.reader.module.MP_FILENAME_CATALOG
 import cn.lightink.reader.module.MP_FILENAME_METADATA
+import cn.lightink.reader.module.MP_FOLDER_IMAGES
 import cn.lightink.reader.module.MP_FOLDER_TEXTS
 import cn.lightink.reader.module.Room
 import cn.lightink.reader.module.storage.Chapter
+import cn.lightink.reader.module.storage.Img
 import cn.lightink.reader.ui.bookshelf.SelectPreferredBookshelfDialog
 import java.io.File
 import kotlin.collections.forEach
@@ -45,17 +47,19 @@ class ImportController {
 
         SelectPreferredBookshelfDialog()
             .callback {
-                bookshelf -> callback(bookshelf)
+                    bookshelf -> callback(bookshelf)
             }.show(fragmentManager)
         return
     }
 
-    fun publish(metadata: MPMetadata, chapters: List<Chapter>, bookshelf: Bookshelf): LiveData<Book?> {
+    fun publish(metadata: MPMetadata, chapters: List<Chapter>, img: List<Img> = emptyList(), bookshelf: Bookshelf): LiveData<Book?> {
         val liveData = MutableLiveData<Book?>()
         //生成输出目录
         val output = File(BOOK_PATH, metadata.objectId).only()
+        //生成图片文件夹
+        val imgDir = File(output, MP_FOLDER_IMAGES).apply { mkdirs() }
         //生成章节文件夹
-        val chapterDir = File(output, MP_FOLDER_TEXTS).apply{ mkdirs()}
+        val chapterDir = File(output, MP_FOLDER_TEXTS).apply{ mkdirs() }
         //生成目录
         val catalog = File(output, MP_FILENAME_CATALOG).apply { createNewFile() }
         val catalogBuilder = StringBuilder()
@@ -64,10 +68,10 @@ class ImportController {
             val chapterFile = File(
                 chapterDir,
                 "${
-                    chapter.index.toString() + 
-                            chapter.title.md5() + 
+                    chapter.index.toString() +
+                            chapter.title.md5() +
                             System.currentTimeMillis()
-                        .toString()
+                                .toString()
                 }.md"
             ).apply { createNewFile() }
             val chapterContent = chapter.content
@@ -76,7 +80,13 @@ class ImportController {
                 .filter { it.isNotBlank() }
                 .joinToString("\n") { it.trim() }
             chapterFile.writeText(chapterContent.trim())
+            if (chapter.level > 0) catalogBuilder.append("\t".repeat(chapter.level))
             catalogBuilder.append("* [${chapter.title}](${chapterFile.nameWithoutExtension})$MP_ENTER")
+        }
+        //写入图片
+        img.forEach {
+            val imgFile = File(imgDir, it.name).apply { createNewFile() }
+            imgFile.writeBytes(it.bytes)
         }
         catalog.writeText(catalogBuilder.toString())
         //存储元数据

@@ -1,7 +1,9 @@
 package cn.lightink.reader.module.storage
 
 import cn.lightink.reader.ktx.toJson
+import cn.lightink.reader.model.BookRank
 import cn.lightink.reader.model.BookSource
+import cn.lightink.reader.module.Room
 import cn.lightink.reader.module.booksource.BookSourceJson
 import cn.lightink.reader.transcode.JavaScriptTranscoder
 import com.google.gson.Gson
@@ -57,5 +59,24 @@ class SourceParser {
             type = "js",
             content = js
         )
+    }
+
+    fun sourceImport(list: List<BookSourcePreview>) {
+        list.forEach { (source, local) ->
+            if (local == null) {
+                Room.bookSource().install(source)
+                if (source.rank) {
+                    Room.bookRank().insert(BookRank(source.url, source.name))
+                }
+            } else {
+                Room.bookSource().update(source)
+                if (source.rank) {
+                    if (local.rank)
+                        Room.bookRank().update(BookRank(source.url, source.name))
+                    else
+                        Room.bookRank().insert(BookRank(source.url, source.name))
+                }
+            }
+        }
     }
 }
