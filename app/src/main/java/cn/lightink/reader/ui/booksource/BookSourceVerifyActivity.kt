@@ -35,7 +35,7 @@ class BookSourceVerifyActivity : LifecycleActivity() {
         mBookSourceVerifyTextFieldLayout.error = null
         mBookSourceVerifyLoading.isVisible = true
         mBookSourceVerifyButton.isVisible = false
-        controller.verifyRepository(url).observe(this, Observer { message ->
+        controller.verifyRepository(url, this.supportFragmentManager).observe(this, Observer { message ->
             mBookSourceVerifyTextFieldLayout.isEnabled = true
             mBookSourceVerifyLoading.isVisible = false
             mBookSourceVerifyButton.isVisible = true

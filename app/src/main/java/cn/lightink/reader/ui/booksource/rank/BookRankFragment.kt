@@ -54,7 +54,7 @@ class BookRankFragment : LifecycleFragment() {
             val ranks = bookSource.js.bookSource()?.ranks.orEmpty()
             if (ranks.isEmpty()) return
             groupJs = ranks.getOrElse(bookRank.preferred) { ranks.firstOrNull().apply {bookRank.preferred = 0}}
-            page = 0
+            page = groupJs?.page ?: -1
             view.mBookRankGroupRecycler.addItemDecoration(VerticalDividerItemDecoration(view.context, R.dimen.padding_horizontal_half))
             view.mBookRankGroupRecycler.isVisible = ranks.isNotEmpty()
             view.mBookRankGroupRecycler.adapter = groupAdapterJs.apply { submitList(ranks) }
@@ -176,7 +176,7 @@ class BookRankFragment : LifecycleFragment() {
         Room.bookRank().update(bookRank)
         view?.mBookRankCategory?.isVisible = categoryJs != null
         view?.mBookRankCategory?.text = categoryJs?.value
-        page = 0
+        page = groupJs?.page ?: -1
         controller.refresh()
         adapter.submitList(emptyList())
         groupAdapterJs.notifyItemRangeChanged(0, groupAdapterJs.itemCount)
@@ -185,18 +185,17 @@ class BookRankFragment : LifecycleFragment() {
 
     private fun onLoadMoreJs() {
         if (view?.mBookRankLoading == null) return
-        if (groupJs == null) return
-        val categoryKey = categoryJs?.key ?: ""
+        if (groupJs == null || categoryJs == null) return
         view?.mBookRankLoading?.isVisible = true
-        val (liveData, end) =  controller.loadMoreJs(bookSource.js, page, groupJs!!.title.key, categoryKey)
-        liveData.observe(viewLifecycleOwner, Observer { list ->
-            view?.mBookRankRecycler?.finishLoadMore(end)
-            view?.mBookRankLoading?.isVisible = false
-            if (list.isNotEmpty()) {
-                adapter.submitList(list)
+        controller.loadMoreJs(bookSource.js, page, groupJs!!.title.key, categoryJs!!.key)
+            .apply {
+                this.first.observe(viewLifecycleOwner, Observer { list ->
+                    view?.mBookRankRecycler?.finishLoadMore(this.second)
+                    view?.mBookRankLoading?.isVisible = false
+                    if (list.isNotEmpty()) adapter.submitList(list)
+                    page += (groupJs?.unit ?: 0)
+                })
             }
-            page += 1
-        })
     }
 
     private val groupAdapterJs = ListAdapter<Rank>(R.layout.item_book_rank_group) { item, rank ->

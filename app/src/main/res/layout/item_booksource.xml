@@ -93,7 +93,18 @@
             android:paddingBottom="4dp"
             android:text="@string/uninstall"
             android:textColor="@color/colorContent"
-            android:textSize="12sp" />
+            android:textSize="12sp"
+            android:visibility="gone"/>
+
+        <com.kyleduo.switchbutton.SwitchButton
+            android:id="@+id/mBookSourceEnable"
+            style="@style/Ink.Switch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="16dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="4dp" />
     </RelativeLayout>
 
 

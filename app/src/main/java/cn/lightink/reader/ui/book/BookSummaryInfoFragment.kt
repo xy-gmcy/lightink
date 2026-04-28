@@ -60,6 +60,30 @@ class BookSummaryInfoFragment : LifecycleFragment() {
             mBookSummaryChapter.text = if (progress.title.isNotBlank()) progress.title else getString(R.string.book_summary_chapter_none)
             mBookSummaryStatistics.text = getString(R.string.book_summary_statistics_format, progress.total.toInt(), progress.speed)
         })
+
+        if (!controller.book!!.category.isNullOrEmpty()) mBookCategory.text = "Category: " + controller.book!!.category else mBookCategory.visibility = View.GONE
+        if (!controller.book!!.words.isNullOrEmpty()) mBookWords.text = "Words: " + controller.book!!.words else mBookWords.visibility = View.GONE
+        if (!controller.book!!.update.isNullOrEmpty()) mBookStatus.text = "Status: " + controller.book!!.update else mBookStatus.visibility = View.GONE
+        if (!controller.book!!.tags.isNullOrEmpty()) mBookTags.text = "Tags: " + controller.book!!.tags.split(",").joinToString(" ") else mBookTags.visibility = View.GONE
+        if (!controller.book!!.updateTime.isNullOrEmpty()) mBookUpdateTime.text = "Update: " + controller.book!!.updateTime else mBookUpdateTime.visibility = View.GONE
+        if (!controller.book!!.updateChapter.isNullOrEmpty()) mBookUpdateChapter.text = "LastChapter: " + controller.book!!.updateChapter else mBookUpdateChapter.visibility = View.GONE
+        if (!controller.book!!.other.isNullOrEmpty()) mBookOtherInfo.text = controller.book!!.other else mBookOtherInfo.visibility = View.GONE
+        if (!controller.book!!.summary.isNullOrEmpty()) mBookSummary.text = "Summary:\n" + controller.book!!.summary else mBookSummary.visibility = View.GONE
+        mBookInfoSummary.visibility = View.GONE
+        when (View.VISIBLE) {
+            mBookCategory.visibility, mBookWords.visibility, mBookStatus.visibility,
+            mBookTags.visibility, mBookUpdateTime.visibility, mBookUpdateChapter.visibility,
+            mBookOtherInfo.visibility,mBookSummary.visibility -> {
+                mReadingInfoSummary.setOnClickListener {
+                    mReadingInfoSummary.visibility = View.GONE
+                    mBookInfoSummary.visibility = View.VISIBLE
+                }
+                mBookInfoSummary.setOnClickListener {
+                    mReadingInfoSummary.visibility = View.VISIBLE
+                    mBookInfoSummary.visibility = View.GONE
+                }
+            }
+        }
     }
 
     /**

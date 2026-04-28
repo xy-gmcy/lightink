@@ -3,10 +3,8 @@ package cn.lightink.reader.ui.booksource
 import android.app.Activity
 import android.content.Intent
 import android.content.res.ColorStateList
-import android.graphics.Typeface
 import android.os.Bundle
 import android.view.Gravity
-import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.core.view.isVisible
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
@@ -17,6 +15,7 @@ import cn.lightink.reader.model.BookSource
 import cn.lightink.reader.module.INTENT_BOOK_SOURCE
 import cn.lightink.reader.module.PageListAdapter
 import cn.lightink.reader.module.RVLinearLayoutManager
+import cn.lightink.reader.module.Room
 import cn.lightink.reader.ui.base.BottomSelectorDialog
 import cn.lightink.reader.ui.base.LifecycleActivity
 import cn.lightink.reader.ui.base.PopupMenu
@@ -87,10 +86,18 @@ class BookSourceActivity : LifecycleActivity() {
                 item.view.mBookSourceAuth.backgroundTintList = ColorStateList.valueOf(getColor(if (verify) R.color.colorAccent else R.color.colorGrapefruit))
             })
         }
+        /**
         item.view.mBookSourceInstall.paint.isFakeBoldText = true
         item.view.mBookSourceInstall.typeface = Typeface.DEFAULT_BOLD
         item.view.mBookSourceInstall.setText(R.string.more)
         item.view.mBookSourceInstallLayout.setOnClickListener { showPopupMenu(item.adapterPosition, bookSource) }
+        **/
+        item.view.mBookSourceEnable.isChecked = bookSource.enable
+        item.view.mBookSourceEnable.setOnCheckedChangeListener { _, isChecked ->
+            bookSource.enable = isChecked
+            Room.bookSource().update(bookSource)
+        }
+        item.view.setOnLongClickListener { showPopupMenu(item.adapterPosition, bookSource); true }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

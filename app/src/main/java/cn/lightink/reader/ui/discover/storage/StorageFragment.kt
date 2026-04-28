@@ -1,15 +1,16 @@
 package cn.lightink.reader.ui.discover.storage
 
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.LinearLayoutManager
 import cn.lightink.reader.R
+import cn.lightink.reader.ktx.change
 import cn.lightink.reader.ktx.size
+import cn.lightink.reader.ktx.toast
 import cn.lightink.reader.module.ListAdapter
 import cn.lightink.reader.ui.base.LifecycleFragment
 import cn.lightink.reader.ui.base.PopupMenu
@@ -53,14 +54,10 @@ abstract class StorageFragment : LifecycleFragment() {
             showPopup()
         }
 
-        mSearchBox.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                mSearchClear.visibility = if (s.isNullOrBlank()) View.GONE else View.VISIBLE
-                fileFilter()
-            }
-            override fun afterTextChanged(s: Editable?) {}
-        })
+        mSearchBox.change { value ->
+            fileFilter(value)
+            mSearchClear.isVisible = value.isNotBlank()
+        }
 
         mSearchClear.setOnClickListener {
             mSearchBox.setText("")
@@ -111,7 +108,7 @@ abstract class StorageFragment : LifecycleFragment() {
 
         currentDir = dir
         mCurrentPath.text = dir.absolutePath
-        fileFilter()
+        fileFilter(mSearchBox.text.toString())
     }
 
     private fun onFileClick(file: File) {
@@ -141,10 +138,18 @@ abstract class StorageFragment : LifecycleFragment() {
             .show(mTopbar)
     }
 
-    protected fun fileFilter() {
-        val keyword = mSearchBox.text.toString()
+    protected fun fileFilter(keyword: String) {
         val files = currentDir?.listFiles()
-            ?.filter { it.name.contains(keyword, false) }
+            ?.filter {
+                if (keyword.startsWith("reg/"))
+                    try {
+                        val regex = keyword.removePrefix("reg/").toRegex()
+                        it.name.contains(regex)
+                    } catch (e: Exception) {
+                        requireContext().toast("Invalid regex pattern")
+                        return@filter true
+                    }
+                else it.name.contains(keyword, false) }
             ?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name })
             ?: emptyList()
 

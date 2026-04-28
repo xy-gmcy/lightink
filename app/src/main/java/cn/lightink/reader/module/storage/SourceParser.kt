@@ -17,9 +17,16 @@ class SourceParser {
     }
 
     fun getRepository(file: File) : List<BookSource>? {
-        val list = Gson().fromJson(file.readText(), List::class.java) as List<String>
+        val list = Gson().fromJson(file.readText(), List::class.java).map {
+                it as String
+                when {
+                    it.endsWith(".json") -> it.removeSuffix(".json")
+                    it.endsWith(".js") -> it.removeSuffix(".js")
+                    else -> it
+                }
+            }
         return File(file.parent, "sources").listFiles()
-            ?.filter { it.nameWithoutExtension in list }?.mapNotNull {
+            ?.filter { it.isFile && it.nameWithoutExtension in list }?.mapNotNull {
                 when (it.extension.toLowerCase()) {
                     "json" -> jsonToSource(it)
                     "js" -> jsToSource(it)
@@ -29,36 +36,39 @@ class SourceParser {
     }
 
     fun jsonToSource(file: File) : BookSource? {
-        val json = Gson().fromJson(file.readText(), BookSourceJson::class.java)
-            ?: return null
-        return BookSource(
-            id = 0,
-            name = json.name,
-            url = json.url,
-            version = json.version,
-            rank = json.rank != null && json.rank.isNotEmpty(),
-            account = json.auth != null && json.auth.login.isNotEmpty(),
-            owner = file.path,
-            type = "json",
-            content = json.toJson(true)
-        )
+        try {
+            val json = Gson().fromJson(file.readText(), BookSourceJson::class.java)
+            return BookSource(
+                id = 0,
+                name = json.name,
+                url = json.url,
+                version = json.version,
+                rank = json.rank != null && json.rank.isNotEmpty(),
+                account = json.auth != null && json.auth.login.isNotEmpty(),
+                owner = file.path,
+                type = "json",
+                content = json.toJson(true)
+            )
+        } catch (e: Exception) { return null }
     }
 
     fun jsToSource(file: File) : BookSource? {
-        val js = file.readText()
-        val info = JavaScriptTranscoder(file.nameWithoutExtension, js).bookSource()
-            ?: return null
-        return BookSource(
-            id = 0,
-            name = info.name,
-            url = info.url,
-            version = info.version,
-            rank = info.ranks != null && info.ranks.isNotEmpty(),
-            account = info.authorization.isNotBlank(),
-            owner = file.path,
-            type = "js",
-            content = js
-        )
+        try {
+            val js = file.readText()
+            val info = JavaScriptTranscoder(file.nameWithoutExtension, js).bookSource()
+                ?: return null
+            return BookSource(
+                id = 0,
+                name = info.name,
+                url = info.url,
+                version = info.version,
+                rank = info.ranks != null && info.ranks.isNotEmpty(),
+                account = info.authorization.isNotBlank(),
+                owner = file.path,
+                type = "js",
+                content = js
+            )
+        } catch (e: Exception) { return null }
     }
 
     fun sourceImport(list: List<BookSourcePreview>) {

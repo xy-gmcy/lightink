@@ -153,51 +153,159 @@
                 android:layout_margin="@dimen/margin_horizontal"
                 android:background="@color/colorStroke" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/margin_horizontal"
-                android:text="@string/book_summary_chapter"
-                android:textColor="@color/colorContent"
-                android:textSize="12sp" />
-
-            <TextView
-                android:id="@+id/mBookSummaryChapter"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/margin_horizontal"
-                android:layout_marginTop="@dimen/margin_vertical"
-                android:layout_marginEnd="@dimen/margin_horizontal"
-                android:layout_marginBottom="@dimen/margin_vertical"
-                android:textColor="@color/colorTitle"
-                android:textSize="14sp"
-                tools:text="第一章" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/margin_horizontal"
-                android:layout_marginTop="12dp"
-                android:text="@string/book_summary_statistics"
-                android:textColor="@color/colorContent"
-                android:textSize="12sp" />
-
-            <TextView
-                android:id="@+id/mBookSummaryStatistics"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/margin_horizontal"
-                android:layout_marginTop="@dimen/margin_vertical"
-                android:layout_marginEnd="@dimen/margin_horizontal"
-                android:textColor="@color/colorTitle"
-                android:textSize="14sp"
-                tools:text="累计阅读270分钟，平均527字每分钟" />
-
-            <View
+            <LinearLayout
+                android:id="@+id/mReadingInfoSummary"
                 android:layout_width="match_parent"
-                android:layout_height="@dimen/dimenStroke"
-                android:layout_margin="@dimen/margin_horizontal"
-                android:background="@color/colorStroke" />
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/margin_horizontal"
+                    android:text="@string/book_summary_chapter"
+                    android:textColor="@color/colorContent"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/mBookSummaryChapter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/margin_horizontal"
+                    android:layout_marginTop="@dimen/margin_vertical"
+                    android:layout_marginEnd="@dimen/margin_horizontal"
+                    android:layout_marginBottom="@dimen/margin_vertical"
+                    android:textColor="@color/colorTitle"
+                    android:textSize="14sp"
+                    tools:text="第一章" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/margin_horizontal"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/book_summary_statistics"
+                    android:textColor="@color/colorContent"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/mBookSummaryStatistics"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/margin_horizontal"
+                    android:layout_marginTop="@dimen/margin_vertical"
+                    android:layout_marginEnd="@dimen/margin_horizontal"
+                    android:textColor="@color/colorTitle"
+                    android:textSize="14sp"
+                    tools:text="累计阅读270分钟，平均527字每分钟" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/dimenStroke"
+                    android:layout_margin="@dimen/margin_horizontal"
+                    android:background="@color/colorStroke" />
+            </LinearLayout>
+            <LinearLayout
+                android:id="@+id/mBookInfoSummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginStart="@dimen/margin_horizontal"
+                    android:layout_marginEnd="@dimen/margin_horizontal">
+                    <TextView
+                        android:id="@+id/mBookCategory"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginTop="@dimen/margin_vertical"
+                        android:layout_marginBottom="@dimen/margin_vertical"
+                        android:textColor="@color/colorTitle"
+                        android:textSize="17sp" />
+                    <TextView
+                        android:id="@+id/mBookWords"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginTop="@dimen/margin_vertical"
+                        android:layout_marginBottom="@dimen/margin_vertical"
+                        android:textColor="@color/colorTitle"
+                        android:textSize="17sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginStart="@dimen/margin_horizontal"
+                    android:layout_marginEnd="@dimen/margin_horizontal">
+                    <TextView
+                        android:id="@+id/mBookUpdateTime"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginTop="@dimen/margin_vertical"
+                        android:layout_marginBottom="@dimen/margin_vertical"
+                        android:textColor="@color/colorTitle"
+                        android:textSize="17sp" />
+                    <TextView
+                        android:id="@+id/mBookStatus"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginTop="@dimen/margin_vertical"
+                        android:layout_marginBottom="@dimen/margin_vertical"
+                        android:textColor="@color/colorTitle"
+                        android:textSize="17sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/mBookTags"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/margin_horizontal"
+                    android:layout_marginTop="@dimen/margin_vertical"
+                    android:layout_marginEnd="@dimen/margin_horizontal"
+                    android:layout_marginBottom="@dimen/margin_vertical"
+                    android:textColor="@color/colorTitle"
+                    android:textSize="17sp" />
+
+                <TextView
+                    android:id="@+id/mBookUpdateChapter"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/margin_horizontal"
+                    android:layout_marginEnd="@dimen/margin_horizontal"
+                    android:layout_marginTop="@dimen/margin_vertical"
+                    android:layout_marginBottom="@dimen/margin_vertical"
+                    android:textColor="@color/colorTitle"
+                    android:textSize="17sp" />
+
+                <TextView
+                    android:id="@+id/mBookOtherInfo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/margin_horizontal"
+                    android:layout_marginTop="@dimen/margin_vertical"
+                    android:layout_marginEnd="@dimen/margin_horizontal"
+                    android:layout_marginBottom="@dimen/margin_vertical"
+                    android:textColor="@color/colorTitle"
+                    android:textSize="17sp" />
+
+                <TextView
+                    android:id="@+id/mBookSummary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/margin_horizontal"
+                    android:layout_marginTop="@dimen/margin_vertical"
+                    android:layout_marginEnd="@dimen/margin_horizontal"
+                    android:layout_marginBottom="@dimen/margin_vertical"
+                    android:textColor="@color/colorTitle"
+                    android:textSize="17sp"/>
+            </LinearLayout>
 
         </LinearLayout>
 

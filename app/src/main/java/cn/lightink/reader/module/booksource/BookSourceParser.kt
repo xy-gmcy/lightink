@@ -37,7 +37,7 @@ class BookSourceParser(val bookSource: BookSource) {
     fun search(key: String): List<SearchMetadata> {
         if (bookSource.type == "js") {
             return bookSource.js.search(key)?.map { t ->
-                SearchMetadata(t.name, t.author, t.cover, "", t.detail)
+                SearchMetadata(t.name, t.author, t.cover, t.summary, t.detail, t.category, t.status, t.words, t.tags, t.update, t.lastChapter, t.filter, t.other)
             }.orEmpty()
         } else {
             val url = bookSource.json.search.url.replace("\${key}", key.encode(bookSource.json.search.charset))
@@ -47,7 +47,7 @@ class BookSourceParser(val bookSource: BookSource) {
                 val metadata = findDetailMetadata(response.url, response)
                 return if (metadata.name.contains(key, true) || metadata.author.contains(key, true)) listOf(metadata.toSearchMetadata()) else emptyList()
             }
-            return results.filter { it.name.contains(key, true) || it.author.contains(key, true) }
+            return results.filter { it.filter ?: (it.name.contains(key, true) || it.author.contains(key, true)) }
         }
         return emptyList()
     }
@@ -59,7 +59,16 @@ class BookSourceParser(val bookSource: BookSource) {
         if (bookSource.type == "js") {
             val r = bookSource.js.detail(metadata.detail)
             if (r != null) {
-                return DetailMetadata(metadata.name, metadata.author, metadata.cover, r.summary, r.status, r.update, r.lastChapter, metadata.detail, r.catalog);
+                return DetailMetadata(metadata.name, metadata.author, metadata.cover,
+                    r.category.ifEmpty { metadata.category },
+                    r.tags.ifEmpty { metadata.tags },
+                    r.words.ifEmpty { metadata.words },
+                    r.other.ifEmpty { metadata.other },
+                    r.summary.ifEmpty { metadata.summary },
+                    r.status.ifEmpty { metadata.status },
+                    r.update.ifEmpty { metadata.update },
+                    r.lastChapter.ifEmpty { metadata.lastChapter },
+                    metadata.detail, r.catalog)
             }
         } else {
             val response = BookSourceInterpreter.execute(metadata.detail, bookSource.json.auth) ?: return null
@@ -68,6 +77,15 @@ class BookSourceParser(val bookSource: BookSource) {
             if (detail.author.isBlank()) detail.author = metadata.author
             if (detail.cover.isBlank()) detail.cover = metadata.cover
             if (detail.summary.isBlank()) detail.summary = metadata.summary
+
+            if (detail.category.isBlank()) detail.category = metadata.category
+            if (detail.tags.isEmpty()) detail.tags = metadata.tags
+            if (detail.words.isBlank()) detail.words = metadata.words
+            if (detail.status.isBlank()) detail.status = metadata.status
+            if (detail.update.isBlank()) detail.update = metadata.update
+            if (detail.lastChapter.isBlank()) detail.lastChapter = metadata.lastChapter
+            if (detail.other.isBlank()) detail.other = metadata.other
+
             return detail
         }
         return null
@@ -78,7 +96,7 @@ class BookSourceParser(val bookSource: BookSource) {
      */
     fun findCatalog(metadata: DetailMetadata, chapters: MutableList<BookSourceResponse> = mutableListOf(), urls: MutableList<String> = mutableListOf()): List<Chapter> {
         if (bookSource.type == "js") {
-            return bookSource.js.catalog(metadata.catalog.toString())?.map { Chapter(it.name, it.url, it.vip) }.orEmpty()
+            return bookSource.js.catalog(metadata.catalog.toString())?.map { Chapter(it.name, it.url, it.level, it.update, it.words) }.orEmpty()
         } else {
             val response = if (metadata.catalog is BookSourceResponse) metadata.catalog as BookSourceResponse else {
                 urls.add(metadata.catalog as String)
@@ -102,6 +120,7 @@ class BookSourceParser(val bookSource: BookSource) {
      * @param list  章节列表源数据
      *
      */
+    /**
     private fun findBooklet(list: MutableList<BookSourceResponse>): List<Chapter> {
         val chapters = mutableListOf<Chapter>()
         list.let { if (bookSource.json.catalog.orderBy % 2 == 0) it.asReversed() else it }.forEach { item ->
@@ -120,6 +139,57 @@ class BookSourceParser(val bookSource: BookSource) {
         }
         return chapters
     }
+    **/
+    private fun findBooklet(list: MutableList<BookSourceResponse>): List<Chapter> {
+        val chapters = mutableListOf<Chapter>()
+        val orderBy = bookSource.json.catalog.orderBy
+        val booklet = bookSource.json.catalog.booklet
+        if (booklet != null) {
+            //存在分卷
+            fun getChapters(action: (BookSourceResponse) -> List<BookSourceResponse>) {
+                list.let { if (orderBy % 2 == 0) it.asReversed() else it }.forEach { item ->
+                    action(item)
+                        .let { if (orderBy !in 1..2) it.asReversed() else it }
+                        .forEach { child -> findChapter(child, true, chapters) }
+                    val name = findValue(item, booklet.name).singleLine()
+                    chapters.add(0, Chapter(name.ifBlank { "正文" }, EMPTY, false))
+                }
+            }
+            val action: (BookSourceResponse) -> List<BookSourceResponse> =
+                when (booklet.url) {
+                    null -> { item -> findList(item, booklet.list) }
+                    "" -> { item ->
+                        when (item.body) {
+                            is Element -> {
+                                item.body.nextElementSiblings()
+                                    .let { elements ->
+                                        val next = elements.firstOrNull { element ->
+                                            element.`is`(bookSource.json.catalog.list)
+                                        }
+                                        if (next != null) elements.subList(0, elements.indexOf(next))
+                                        else elements
+                                    }.apply { this.add(0, item.body) }.map {
+                                        BookSourceResponse(item.url, it)
+                                    }.flatMap { findList(it, booklet.list) }
+                            }
+                            else -> { findList(item, booklet.list) }
+                        }
+                    }
+                    else ->  { item ->
+                        val url = findValue(item, booklet.url, true).trim()
+                        if (URLUtil.isNetworkUrl(url)) {
+                            val response = BookSourceInterpreter.execute(url, bookSource.json.auth)
+                            findList(response ?: item, booklet.list)
+                        } else { findList(item, booklet.list) }
+                    }
+                }
+            getChapters { action(it) }
+        } else {
+            //不存在分卷
+            list.forEach { item -> findChapter(item, false, chapters) }
+        }
+        return chapters
+    }
 
     /**
      * 查找章节
@@ -129,9 +199,11 @@ class BookSourceParser(val bookSource: BookSource) {
      */
     private fun findChapter(response: BookSourceResponse, useLevel: Boolean, chapters: MutableList<Chapter>) {
         val name = findValue(response, bookSource.json.catalog.name)
+        val date = findValue(response, bookSource.json.catalog.date)
+        val words = findValue(response, bookSource.json.catalog.words)
         //章节名必不为空
         if (name.isNotBlank()) {
-            val chapter = Chapter(name, findValue(response, bookSource.json.catalog.chapter, true), useLevel)
+            val chapter = Chapter(name, findValue(response, bookSource.json.catalog.chapter, true), useLevel, date, words)
             //章节链接必不为空且不能存在重复章节
             if (chapter.url.isNotBlank() && !chapters.contains(chapter)) {
                 chapters.add(0, chapter)
@@ -292,7 +364,16 @@ class BookSourceParser(val bookSource: BookSource) {
         author = findValue(response, bookSource.json.search.author),
         cover = findValue(response, bookSource.json.search.cover, true),
         summary = findValue(response, bookSource.json.search.summary),
-        detail = findValue(response, bookSource.json.search.detail, true)
+        detail = findValue(response, bookSource.json.search.detail, true),
+
+        category = findValue(response, bookSource.json.search.category),
+        status = findValue(response, bookSource.json.search.status),
+        words = findValue(response, bookSource.json.search.words),
+        tags = if (bookSource.json.search.tags != null) findList(response, bookSource.json.search.tags!!.list).map { findValue(it, bookSource.json.search.tags!!.item)} else emptyList(),
+        update = findValue(response, bookSource.json.search.update),
+        lastChapter = findValue(response, bookSource.json.search.lastChapter),
+        other = findValue(response, bookSource.json.search.other),
+        filter = if (bookSource.json.search.filter.isNotEmpty()) findValue(response, bookSource.json.search.filter).isNotBlank() else null
     )
 
     private fun findDetailMetadata(url: String, response: BookSourceResponse) = DetailMetadata(
@@ -306,7 +387,12 @@ class BookSourceParser(val bookSource: BookSource) {
         },
         lastChapter = findValue(response, bookSource.json.detail.lastChapter),
         url = url,
-        catalog = if (bookSource.json.detail.catalog.isNotBlank()) findValue(response, bookSource.json.detail.catalog, true) else response
+        catalog = if (bookSource.json.detail.catalog.isNotBlank()) findValue(response, bookSource.json.detail.catalog, true) else response,
+
+        words = findValue(response, bookSource.json.detail.words),
+        category = findValue(response, bookSource.json.detail.category),
+        tags = if (bookSource.json.detail.tags != null) findList(response, bookSource.json.detail.tags!!.list).map { findValue(it, bookSource.json.detail.tags!!.item)} else emptyList(),
+        other = findValue(response, bookSource.json.detail.other)
     )
 
     private fun findRankMetadata(response: BookSourceResponse, rank: BookSourceJson.Rank) = SearchMetadata(
@@ -314,7 +400,17 @@ class BookSourceParser(val bookSource: BookSource) {
         author = findValue(response, if (rank.author.isNotBlank()) rank.author else bookSource.json.search.author),
         cover = findValue(response, if (rank.cover.isNotBlank()) rank.cover else bookSource.json.search.cover, true),
         summary = findValue(response, if (rank.summary.isNotBlank()) rank.summary else bookSource.json.search.summary),
-        detail = findValue(response, if (rank.detail.isNotBlank()) rank.detail else bookSource.json.search.detail, true)
+        detail = findValue(response, if (rank.detail.isNotBlank()) rank.detail else bookSource.json.search.detail, true),
+
+        category = findValue(response, rank.category.ifBlank { bookSource.json.search.category }),
+        status = findValue(response, rank.status.ifBlank { bookSource.json.search.status }),
+        words = findValue(response, rank.words.ifBlank { bookSource.json.search.words }),
+        tags = listOf(rank.tags, bookSource.json.search.tags).firstOrNull { it != null }
+            ?.let { tags -> findList(response, tags.list)
+                .map { findValue(it, tags.item)} } ?: emptyList(),
+        update = findValue(response, bookSource.json.search.update),
+        lastChapter = findValue(response, bookSource.json.search.lastChapter),
+        other = findValue(response, bookSource.json.search.other),
     )
 
     private fun findValue(response: BookSourceResponse, query: String, isHref: Boolean = false): String {

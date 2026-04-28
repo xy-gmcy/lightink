@@ -51,7 +51,7 @@ class JavaScriptTranscoder(private val host: String, private val bookSource: Str
             val response = context.evaluate("search('$key');", filename, String::class.java)
             val results = response.decodeJson<List<SearchResult>>()
             return@javaScript results.filter {
-                it.author.isNotBlank() && (it.name.contains(key) || it.author.contains(key))
+                it.filter ?: (it.author.isNotBlank() && (it.name.contains(key) || it.author.contains(key)))
             }
         } catch (e: Exception) {
             Log.w("JavaScriptTranscoder", "search error, key: $key, bookSource: $host", e)

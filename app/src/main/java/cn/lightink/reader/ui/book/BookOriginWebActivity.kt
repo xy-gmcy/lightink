@@ -1,25 +1,30 @@
-package cn.lightink.reader.ui.booksource
+package cn.lightink.reader.ui.book
 
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
-import android.webkit.*
+import android.webkit.URLUtil
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import cn.lightink.reader.R
 import cn.lightink.reader.ktx.openFullscreen
 import cn.lightink.reader.ktx.toast
-import cn.lightink.reader.module.INTENT_BOOK_SOURCE
-import cn.lightink.reader.module.Room
-import cn.lightink.reader.transcode.JavaScriptTranscoder
 import cn.lightink.reader.ui.base.LifecycleActivity
 import kotlinx.android.synthetic.main.activity_book_source_auth.*
 
-class BookSourceAuthActivity : LifecycleActivity() {
+class BookOriginWebActivity: LifecycleActivity() {
 
-    private val bookSource by lazy { Room.bookSource().get(intent.getStringExtra(INTENT_BOOK_SOURCE).orEmpty()) }
+    companion object {
+        const val EXTRA_URL = "extra_url"
+    }
+
+    private val url by lazy { intent.getStringExtra(EXTRA_URL).orEmpty() }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,20 +39,12 @@ class BookSourceAuthActivity : LifecycleActivity() {
         mAuthWebView.webViewClient = buildClient()
         mAuthWebView.webChromeClient = object : WebChromeClient() {}
 
-        //区分js和json的登录url
-        if (bookSource!!.type == "js") {
-            val js = JavaScriptTranscoder(
-                bookSource!!.url,
-                bookSource!!.content
-            )
-            mAuthWebView.loadUrl(js.bookSource()!!.authorization)
-            js.loginVerify()
-        } else mAuthWebView.loadUrl(bookSource?.json?.auth?.login!!)
+        mAuthWebView.loadUrl(url)
 
         mTopbar.setNavigationOnClickListener {
-            setResult(Activity.RESULT_OK, Intent().putExtra(INTENT_BOOK_SOURCE, bookSource?.url))
             finish()
         }
+
     }
 
     private fun buildClient() = object : WebViewClient() {
@@ -75,11 +72,8 @@ class BookSourceAuthActivity : LifecycleActivity() {
     }
 
     override fun onBackPressed() {
-        if ( mAuthWebView.canGoBack()) {
+        if (mAuthWebView.canGoBack()) {
             mAuthWebView.goBack()
-            return
-        }
-        setResult(Activity.RESULT_OK, Intent().putExtra(INTENT_BOOK_SOURCE, bookSource?.url))
-        finish()
+        } else { finish() }
     }
 }

@@ -54,12 +54,15 @@ import cn.lightink.reader.module.EMPTY
  * @property href   超链接
  * @property level  缩进等级
  */
-data class Chapter(val index: Int, var title: String, var href: String, var level: Int = 0) {
+data class Chapter(val index: Int, var title: String, var href: String, var level: Int = 0, var update: String = "", var words: String = "") {
 
     constructor(index: Int, markdown: String) : this(index,
             title = markdown.substringAfter("[", markdown).substringBeforeLast("](", markdown),
             href = markdown.substringAfterLast("](", EMPTY).substringBeforeLast(")", EMPTY),
-            level = markdown.substringBefore("*").count { it == '\t' }
+            level = markdown.substringBefore("*").count { it == '\t' },
+
+            update = markdown.substringAfter("{<").substringBefore("><"),
+            words = markdown.substringAfter("><").substringBefore(">}")
     )
 
     val encodeHref: String

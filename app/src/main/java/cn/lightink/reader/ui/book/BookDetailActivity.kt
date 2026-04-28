@@ -23,10 +23,12 @@ import cn.lightink.reader.module.booksource.Chapter
 import cn.lightink.reader.module.booksource.DetailMetadata
 import cn.lightink.reader.ui.base.LifecycleActivity
 import cn.lightink.reader.ui.base.WarningMessageDialog
+import cn.lightink.reader.ui.book.BookOriginWebActivity.Companion.EXTRA_URL
 import cn.lightink.reader.ui.bookshelf.SelectPreferredBookshelfDialog
 import cn.lightink.reader.ui.main.SearchActivity
 import cn.lightink.reader.ui.reader.ReaderActivity
 import com.google.android.material.appbar.AppBarLayout
+import kotlinx.android.synthetic.main.item_book_detail_chapter.view.*
 import kotlinx.android.synthetic.main.activity_book_detail.*
 import kotlin.math.max
 import kotlin.math.min
@@ -38,6 +40,8 @@ class BookDetailActivity : LifecycleActivity() {
     private var book: SearchBook? = null
 
     private var index = 0
+
+    private var currentMetadata: DetailMetadata? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,8 +73,24 @@ class BookDetailActivity : LifecycleActivity() {
         })
         //显示简介
         mBookDetailSummary.setOnClickListener {
-            if (mBookDetailSummary.text.isBlank()) return@setOnClickListener
-            WarningMessageDialog(this, mBookDetailSummary.text.toString()).show()
+            //if (mBookDetailSummary.text.isBlank()) return@setOnClickListener
+            //WarningMessageDialog(this, mBookDetailSummary.text.toString()).show()
+            if (currentMetadata == null) return@setOnClickListener
+            val detail = listOfNotNull(
+                currentMetadata!!.name.let { if (it.isNotBlank()) "Name: $it" else null},
+                currentMetadata!!.author.let { if (it.isNotBlank()) "Author: $it" else null},
+                currentMetadata!!.category.let { if (it.isNotBlank()) "Category: $it" else null},
+                currentMetadata!!.words.let { if (it.isNotBlank()) "Words: $it" else null},
+                currentMetadata!!.update.let { if (it.isNotBlank()) "Update: $it" else null},
+                currentMetadata!!.status.let { if (it.isNotBlank()) "Status: $it" else null},
+                currentMetadata!!.tags.let { if (it.isNotEmpty()) "Tags: ${it.joinToString(" ")}" else null},
+                currentMetadata!!.lastChapter.let { if (it.isNotBlank()) "LastChapter: $it" else null},
+                currentMetadata!!.other.ifBlank { null },
+                currentMetadata!!.summary.let { if (it.isNotBlank()) "Summary:\n$it" else null}
+            ).joinToString("\n")
+            if (detail.isNotBlank()) {
+                WarningMessageDialog(this, detail).show()
+            }
         }
         //设置目录排序菜单
         mBookDetailCatalogLayout.inflateMenu(R.menu.sort)
@@ -131,6 +151,15 @@ class BookDetailActivity : LifecycleActivity() {
         if (book?.summary.isNullOrBlank() && metadata.summary.isNotBlank()) {
             book?.summary = metadata.summary
         }
+        mBookDetailName.setOnLongClickListener {
+            try {
+                startActivity(
+                    Intent(this, BookOriginWebActivity::class.java)
+                        .putExtra(EXTRA_URL, metadata.url)
+                )
+                true
+            } catch (e: Exception) { false }
+        }
         //作者快速搜索
         mBookDetailAuthor.setOnClickListener {
             startActivity(Intent(this, SearchActivity::class.java).putExtra(INTENT_SEARCH, book!!.author))
@@ -149,6 +178,8 @@ class BookDetailActivity : LifecycleActivity() {
             mBookDetailRead.isVisible = true
             mBookDetailRead.setOnClickListener { openBook(Room.book().get(book!!.objectId())) }
         }
+
+        currentMetadata = metadata
     }
 
     /**
@@ -260,9 +291,16 @@ class BookDetailActivity : LifecycleActivity() {
      * 构建数据适配器
      */
     private fun buildAdapter() = ListAdapter<Chapter>(R.layout.item_book_detail_chapter) { item, chapter ->
-        (item.view as TextView).text = chapter.name
-        item.view.setTextColor(getColor(if (chapter.url.isNotEmpty()) R.color.colorTitle else R.color.colorContent))
-        item.view.setTextSize(TypedValue.COMPLEX_UNIT_SP, if (chapter.url.isNotEmpty()) 15F else 12F)
+        //(item.view as TextView).text = chapter.name
+        //item.view.setTextColor(getColor(if (chapter.url.isNotEmpty()) R.color.colorTitle else R.color.colorContent))
+        //item.view.setTextSize(TypedValue.COMPLEX_UNIT_SP, if (chapter.url.isNotEmpty()) 15F else 12F)
         item.view.setOnClickListener { preview(mBookDetailRecycler.adapter!!.itemCount - 1 - item.adapterPosition, chapter) }
+
+        (item.view.mChapterTitle as TextView).text = chapter.name
+        item.view.mChapterTitle.setTextColor(getColor(if (chapter.url.isNotEmpty()) R.color.colorTitle else R.color.colorContent))
+        item.view.mChapterTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, if (chapter.url.isNotEmpty()) 15F else 12F)
+        val info = listOf(chapter.words, chapter.update).filter { it.isNotBlank() }
+        if (info.isEmpty()) item.view.mChapterInfo.visibility = View.GONE
+        else item.view.mChapterInfo.text = info.joinToString(" | ")
     }
 }

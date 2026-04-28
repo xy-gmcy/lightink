@@ -23,7 +23,7 @@ import com.google.gson.Gson
  * @param content       内容
  */
 @Entity
-data class BookSource(val id: Int, var name: String, @PrimaryKey val url: String, var version: Int, var rank: Boolean, var account: Boolean, var owner: String, var type: String, var content: String, var frequency: Int = 0) {
+data class BookSource(val id: Int, var name: String, @PrimaryKey val url: String, var version: Int, var rank: Boolean, var account: Boolean, var owner: String, var type: String, var content: String, var frequency: Int = 0, var enable: Boolean = true) {
 
     val json: BookSourceJson
         get() = Gson().fromJson(content, BookSourceJson::class.java)!!

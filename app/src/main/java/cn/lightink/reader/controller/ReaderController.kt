@@ -20,7 +20,6 @@ import androidx.viewpager2.widget.ViewPager2
 import cn.lightink.reader.ktx.*
 import cn.lightink.reader.model.*
 import cn.lightink.reader.module.*
-import cn.lightink.reader.module.booksource.BookSourceJson
 import cn.lightink.reader.module.booksource.BookSourceParser
 import cn.lightink.reader.module.booksource.BookSourceSearchResponse
 import cn.lightink.reader.module.booksource.DetailMetadata
@@ -878,8 +877,8 @@ class ReaderController : ViewModel(), LifecycleObserver {
         val result = MutableLiveData<BookSourceSearchResponse?>()
         viewModelScope.launch {
             async(Dispatchers.IO) {
-                result.postValue(BookSourceSearchResponse(DetailMetadata(book.name, book.author, EMPTY, EMPTY, EMPTY, EMPTY, catalog.lastOrNull()?.title.orEmpty(), EMPTY, EMPTY), bookSource!!.bookSource, listOf()))
-                Room.bookSource().getAllImmediately().filter { it.url != bookSource?.bookSource?.url }.map { BookSourceParser(it) }.forEach { source ->
+                result.postValue(BookSourceSearchResponse(DetailMetadata(book.name, book.author, EMPTY, "", emptyList(), "", "", EMPTY, EMPTY, EMPTY, catalog.lastOrNull()?.title.orEmpty(), EMPTY, EMPTY), bookSource!!.bookSource, listOf()))
+                Room.bookSource().getAllImmediately().filter { it.url != bookSource?.bookSource?.url && it.enable }.map { BookSourceParser(it) }.forEach { source ->
                     launch {
                         source.findTheLastChapter(book)?.run { result.postValue(this) }
                     }

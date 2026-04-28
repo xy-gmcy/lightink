@@ -6,6 +6,11 @@
     android:fitsSystemWindows="true"
     android:orientation="vertical">
 
+    <cn.lightink.reader.widget.TopbarView
+        android:id="@id/mTopbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
     <WebView
         android:id="@+id/mAuthWebView"
         android:layout_width="match_parent"

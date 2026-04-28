@@ -50,7 +50,7 @@ class SearchController : ViewModel() {
             state.postValue(true)
             localLiveData.postValue(Room.book().search("%$key%"))
             //如果书源列表为空读取列表
-            if (bookSources.isEmpty()) bookSources.addAll(Room.bookSource().getAllImmediately())
+            if (bookSources.isEmpty()) bookSources.addAll(Room.bookSource().getAllImmediately().filter { it.enable })
             //取消正在执行的任务
             cancelSearch()
             //挂起搜索

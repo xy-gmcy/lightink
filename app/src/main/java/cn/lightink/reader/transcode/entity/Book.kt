@@ -24,7 +24,8 @@ data class BookSourceInfo(val name: String, val url: String, val version: Int, v
  * @property detail 详情地址
  */
 @Serializable
-data class SearchResult(val name: String, val author: String = "", val cover: String = "", val detail: String)
+data class SearchResult(val name: String, val author: String = "", val cover: String = "", val detail: String,
+                        val category: String = "", val status: String = "", val words: String = "", val tags: List<String> = emptyList(), val summary: String = "", val update: String = "", val lastChapter: String = "", val filter: Boolean? = null, val other: String = "")
 
 /**
  * 图书详情
@@ -37,7 +38,7 @@ data class SearchResult(val name: String, val author: String = "", val cover: St
  * @property catalog 目录地址
  */
 @Serializable
-data class BookDetail(val category: String = "", val status: String = "", val words: String = "", val summary: String = "", val update: String = "", val lastChapter: String = "", val catalog: String = "")
+data class BookDetail(val category: String = "", val status: String = "", val words: String = "", val tags: List<String> = emptyList(), val other: String = "", val summary: String = "", val update: String = "", val lastChapter: String = "", val catalog: String = "")
 
 /**
  * 章节
@@ -47,7 +48,7 @@ data class BookDetail(val category: String = "", val status: String = "", val wo
  */
 @Parcelize
 @Serializable
-data class Chapter(val name: String, val url: String = "", val vip: Boolean = false) : Parcelable
+data class Chapter(val name: String, val url: String = "", val vip: Boolean = false, val level: Boolean = false, val update: String = "", val words: String = "") : Parcelable
 
 /**
  * 个人中心
@@ -104,7 +105,9 @@ data class PagingBooks(val books: List<SearchResult> = listOf(), val end: Boolea
  * @property categories 分类
  */
 @Serializable
-data class Rank(val title: KeyValue, val categories: List<KeyValue> = listOf())
+data class Rank(val title: KeyValue, val categories: List<KeyValue> = listOf(), val page: Int = -1, val unit: Int = 1)
 
 @Serializable
 data class KeyValue(val key: String, val value: String)
+
+data class Tag(val list: String, val item: String)

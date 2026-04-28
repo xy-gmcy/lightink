@@ -75,8 +75,15 @@ class BookRankController : ViewModel() {
                     name = it.name,
                     author = it.author,
                     cover = it.cover,
-                    summary = "",
-                    detail = it.detail
+                    summary = it.summary,
+                    detail = it.detail,
+                    category = it.category,
+                    status = it.status,
+                    words = it.words,
+                    tags = it.tags,
+                    update = it.update,
+                    lastChapter = it.lastChapter,
+                    other = it.other
                 )
             }
             end = response.end
@@ -98,7 +105,7 @@ class BookRankController : ViewModel() {
         val liveData = MutableLiveData<SearchBook?>()
         viewModelScope.launch {
             //如果书源列表为空读取列表
-            if (bookSources.isEmpty()) bookSources.addAll(Room.bookSource().getAllImmediately().filter { it.url != bookSource.url })
+            if (bookSources.isEmpty()) bookSources.addAll(Room.bookSource().getAllImmediately().filter { it.url != bookSource.url && it.enable })
             //取消正在执行的任务
             cancelSearch()
             handleSearchBook(metadata, bookSource, 0)

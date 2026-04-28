@@ -188,6 +188,9 @@ class ReaderCatalogFragment : LifecycleFragment(), View.OnTouchListener, Recycle
      */
     private fun buildCatalogAdapter() = CatalogAdapter { item, chapter ->
         item.view.mBookChapter.text = chapter.title
+        val info = listOf(chapter.words, chapter.update).filter { it.isNotBlank() }
+        if (info.isEmpty()) item.view.mBookChapterInfo.visibility = View.GONE
+        else item.view.mBookChapterInfo.text = info.joinToString(" | ")
         item.view.mBookChapter.typeface = controller.paint.typeface
         item.view.mBookChapter.setTextColor(when {
             chapter.index == controller.book.chapter -> controller.theme.control

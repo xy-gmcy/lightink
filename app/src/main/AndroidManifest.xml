@@ -147,6 +147,7 @@
 
         <activity android:name="cn.lightink.reader.ui.discover.storage.StorageActivity" />
         <activity android:name="cn.lightink.reader.ui.discover.storage.TXTConvertActivity" />
+        <activity android:name="cn.lightink.reader.ui.book.BookOriginWebActivity" />
 
         <meta-data
             android:name="android.notch_support"

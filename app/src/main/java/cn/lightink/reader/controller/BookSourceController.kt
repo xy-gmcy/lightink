@@ -1,5 +1,6 @@
 package cn.lightink.reader.controller
 
+import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -7,14 +8,17 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.toLiveData
 import cn.lightink.reader.transcode.JavaScriptTranscoder
 import cn.lightink.reader.ktx.toJson
-import cn.lightink.reader.model.BookRank
 import cn.lightink.reader.model.BookSource
+import cn.lightink.reader.model.Result
 import cn.lightink.reader.module.EMPTY
 import cn.lightink.reader.module.LIMIT
 import cn.lightink.reader.module.Room
 import cn.lightink.reader.module.booksource.BookSourceJson
 import cn.lightink.reader.module.booksource.BookSourceParser
+import cn.lightink.reader.module.storage.BookSourcePreview
+import cn.lightink.reader.module.storage.SourceParser
 import cn.lightink.reader.net.Http
+import cn.lightink.reader.ui.discover.storage.BookSourceImportFragment.RepositoryDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -45,18 +49,45 @@ class BookSourceController : ViewModel() {
     /**************************************************************************************************************************************
      * 验证网络书源
      *************************************************************************************************************************************/
-    fun verifyRepository(url: String): LiveData<String> {
+    fun verifyRepository(url: String, fragmentManager: FragmentManager): LiveData<String> {
         val liveData = MutableLiveData<String>()
         viewModelScope.launch(Dispatchers.IO) {
-            val response = Http.get<List<String>>(url)
+            val response: Result<List<String>>
+            try {
+                response = Http.get<List<String>>(url)
+            } catch (e: Exception) {
+                liveData.postValue(e.message)
+                return@launch
+            }
             when {
                 response.isSuccessful && response.data.isNullOrEmpty() -> liveData.postValue("该网址不存在书源索引")
                 response.isSuccessful -> {
                     withContext(Dispatchers.IO) {
+                        /**
                         response.data?.forEach { name ->
-                            launch { verifyBookSource(name, url) }
+                        launch { verifyBookSource(name, url) }
                         }
-                    }
+                         **/
+                        var type = "json"
+                        response.data?.mapNotNull {
+                            when {
+                                it == "---json---" -> { type = "json" ; null }
+                                it == "---js---" -> { type = "js"; null }
+                                it.endsWith(".json") -> verifyBookSource(it.removeSuffix(".json"), url, "json")
+                                it.endsWith(".js") -> verifyBookSource(it.removeSuffix(".js"), url, "js")
+                                else -> verifyBookSource(it,url, type)
+                            }
+                        }
+                    }?.apply {
+                        if (this.isEmpty()) { liveData.postValue("该仓库不存在书源"); return@launch }
+                    }?.map { BookSourcePreview(it) }
+                        .apply {
+                            RepositoryDialog(url, this!!).callback { list ->
+                                list.filter { it.checked }.apply {
+                                    if (this.isNotEmpty()) SourceParser().sourceImport(this)
+                                }
+                            }.show(fragmentManager)
+                        }
                     liveData.postValue(EMPTY)
                 }
                 else -> liveData.postValue(response.message)
@@ -65,6 +96,48 @@ class BookSourceController : ViewModel() {
         return liveData
     }
 
+
+    private suspend fun verifyBookSource(name: String, baseUrl: String, type: String): BookSource? {
+        return when (type) {
+            "json" -> {
+                val url = "${baseUrl.substringBeforeLast("/")}/sources/$name.json"
+                val response = Http.get<BookSourceJson>(url)
+                if (response.isSuccessful && response.data != null) {
+                    BookSource(
+                        0,
+                        response.data.name,
+                        response.data.url,
+                        response.data.version,
+                        !response.data.rank.isNullOrEmpty(),
+                        response.data.auth != null && response.data.auth.login.isNotEmpty(),
+                        baseUrl,
+                        "json",
+                        response.data.toJson(true)
+                    )
+                } else null
+            }
+            "js" -> {
+                val url = "${baseUrl.substringBeforeLast("/")}/sources/$name.js"
+                val response = Http.get<String>(url)
+                if (response.isSuccessful && response.data != null) {
+                    val javaScript = response.data
+                    val info = JavaScriptTranscoder(name, javaScript).bookSource() ?: return null
+                    BookSource(
+                        0, info.name,
+                        info.url,
+                        info.version,
+                        info.ranks.isNotEmpty(),
+                        info.authorization.isNotEmpty(),
+                        baseUrl,
+                        "js",
+                        javaScript
+                    )
+                } else null
+            }
+            else -> null
+        }
+    }
+    /**
     private suspend fun verifyBookSource(name: String, baseUrl: String) {
         if (name.endsWith(".js")) {
             val url = "${baseUrl.substringBeforeLast("/")}/sources/$name"
@@ -145,6 +218,7 @@ class BookSourceController : ViewModel() {
             }
         }
     }
+    **/
 
     /**
      * 卸载书源

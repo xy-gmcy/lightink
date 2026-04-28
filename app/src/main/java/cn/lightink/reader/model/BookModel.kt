@@ -9,7 +9,6 @@ import cn.lightink.reader.ktx.md5
 import cn.lightink.reader.ktx.toJson
 import cn.lightink.reader.module.*
 import cn.lightink.reader.module.Room
-import cn.lightink.reader.module.booksource.BookSourceJson
 import cn.lightink.reader.module.booksource.BookSourceParser
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
@@ -43,7 +42,8 @@ import java.io.File
  */
 @Parcelize
 @Entity(primaryKeys = ["objectId"], indices = [Index("objectId", unique = true)])
-data class Book(val objectId: String, var name: String, var author: String, var link: String, var publishId: String, var bookshelf: Long, var lastChapter: String = EMPTY, var state: Int = BOOK_STATE_IDLE, var catalog: Int = 0, var chapter: Int = 0, var chapterProgress: Int = 0, var chapterName: String = EMPTY, var time: Int = 0, var word: Int = 0, var speed: Float = 0F, var updatedAt: Long = System.currentTimeMillis(), var finishedAt: Long = 0L, var configuration: Long = 0, var createdAt: Long = System.currentTimeMillis(), var version: Int = -1) : Parcelable {
+data class Book(val objectId: String, var name: String, var author: String, var link: String, var publishId: String, var bookshelf: Long, var lastChapter: String = EMPTY, var state: Int = BOOK_STATE_IDLE, var catalog: Int = 0, var chapter: Int = 0, var chapterProgress: Int = 0, var chapterName: String = EMPTY, var time: Int = 0, var word: Int = 0, var speed: Float = 0F, var updatedAt: Long = System.currentTimeMillis(), var finishedAt: Long = 0L, var configuration: Long = 0, var createdAt: Long = System.currentTimeMillis(), var version: Int = -1,
+                var category: String = "", var tags: String = "", var words: String = "", var summary: String = "",var update: String = "", var updateTime: String = "", var updateChapter: String = "", var other: String = "") : Parcelable {
 
     @Ignore
     @IgnoredOnParcel

@@ -88,7 +88,7 @@ class BookController : ViewModel() {
                 val catalog = File(output, MP_FILENAME_CATALOG).apply { createNewFile() }
                 chapters.forEach { chapter ->
                     if (chapter.useLevel) catalog.appendText(MP_CATALOG_INDENTATION)
-                    catalog.appendText("* [${chapter.name}](${chapter.url})$MP_ENTER")
+                    catalog.appendText("* [${chapter.name}](${chapter.url}){<${chapter.update}><${chapter.words}>}$MP_ENTER")
                 }
                 //存储元数据
                 File(output, MP_FILENAME_METADATA).writeText(metadata.toMetadata().toJson())
@@ -98,6 +98,16 @@ class BookController : ViewModel() {
                 val book = Book(metadata.toMetadata(), bookshelf?.id ?: -1L)
                 book.catalog = chapters.size
                 book.lastChapter = chapters.last().name
+
+                book.category = metadata.category
+                book.tags = metadata.tags.joinToString(" ")
+                book.words = metadata.words
+                book.summary = metadata.summary
+                book.updateTime = metadata.update
+                book.updateChapter = metadata.lastChapter
+                book.update = metadata.status
+                book.other = metadata.other
+
                 if (URLUtil.isNetworkUrl(baseInfo?.cover ?: metadata.cover)) withContext(Dispatchers.IO) {
                     if (File(book.cover).parentFile?.exists() == false) File(book.cover).parentFile?.mkdirs()
                     try {
