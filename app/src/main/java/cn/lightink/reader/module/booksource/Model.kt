@@ -53,6 +53,7 @@ data class DetailMetadata(var name: String, var author: String, var cover: Strin
 
 data class Chapter(var name: String, var url: String, var useLevel: Boolean, val update: String = "", val words: String = "")
 
+/*
 data class Query(val query: String, var match: String? = null, var euqal: String? = null, var replace: String? = null, var decrypt: String? = null) {
 
     companion object {
@@ -84,4 +85,42 @@ data class Query(val query: String, var match: String? = null, var euqal: String
         }
     }
 
+}
+*/
+data class Query(val query: String, val operators: List<Pair<String, String>> = emptyList()) {
+    companion object {
+        fun build(expression: String): Query {
+            val matches = Regex("@(js|match|equal|equalNot|replace|decrypt)->").findAll(expression).toList()
+            if (matches.isEmpty()) return Query(expression)
+            return Query(expression.substring(0, matches.first().range.first),
+                matches.mapIndexed { index, match ->
+                    val start = match.range.last + 1
+                    val end = if (index < matches.lastIndex) matches[index + 1].range.first else expression.length
+                    val operator = match.value.removeSurrounding("@", "->")
+                    val value = expression.substring(start, end)
+                    operator to value
+                }
+            )
+        }
+    }
+}
+
+data class ResponseCache(
+    var search: MutableList<Any> = mutableListOf(),
+    var detail: Any = "",
+    val catalog: MutableList<Any> = mutableListOf(),
+    val booklet: MutableList<Any> = mutableListOf(),
+    var chapter: Any = "",
+    val rank: MutableList<Any> = mutableListOf()
+) {
+    fun put(key: String, value: BookSourceResponse) {
+        when (key) {
+            "search" -> search.add(value.body)
+            "detail" -> detail = value.body
+            "catalog" -> catalog.add(value.body)
+            "booklet" -> booklet.add(value.body)
+            "chapter" -> chapter = value.body
+            "rank" -> rank.add(value.body)
+        }
+    }
 }

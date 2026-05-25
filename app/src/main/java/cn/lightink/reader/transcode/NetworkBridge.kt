@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.util.Base64
 import android.util.Log
 import android.webkit.CookieManager
-import cn.lightink.reader.transcode.DependenciesManager
 import com.hippo.quickjs.android.*
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
@@ -72,7 +71,8 @@ object NetworkBridge {
         url: String,
         data: String?,
         headers: List<String>,
-        unzipFilename: String?
+        unzipFilename: String?,
+        charset: Charset? = null
     ): String {
         //构建Headers
         val headersBuilder = Headers.Builder()
@@ -97,7 +97,7 @@ object NetworkBridge {
             .build()
         val response = client.newCall(request).execute()
         printHeaders(response)
-        return string(url, response, unzipFilename)
+        return string(url, response, unzipFilename, charset)
     }
 
     /**
@@ -107,7 +107,8 @@ object NetworkBridge {
         method: Connection.Method,
         url: String,
         data: String?,
-        headers: List<String>
+        headers: List<String>,
+        charset: Charset? = null
     ): String {
         val connection = Jsoup.connect(url).method(method)
         if (data?.isNotBlank() == true) {
@@ -134,15 +135,15 @@ object NetworkBridge {
         markdown.append("Cookie: ${CookieManager.getInstance().getCookie(url).orEmpty()}\n")
         markdown.append("```\n")
         Console.println(markdown.toString(), Console.Type.Headers)
-        return response.body()
+        return if (charset != null) String(response.bodyAsBytes(), charset) else response.body()
     }
 
     /**
      * 响应结果转字符串
      */
-    private fun string(url: String, response: Response, unzipFilename: String? = null): String {
+    private fun string(url: String, response: Response, unzipFilename: String? = null, responseCharset: Charset? = null): String {
         val body = response.body?.bytes() ?: byteArrayOf()
-        var charset = body.charset() ?: charset("UTF-8")
+        var charset = responseCharset ?: body.charset() ?: charset("UTF-8")
         if (!unzipFilename.isNullOrBlank()) {
             val filename = url.removeSuffix("/").substringAfterLast("/")
             val file = DependenciesManager.buildZipFile(filename)
@@ -434,7 +435,10 @@ object NetworkBridge {
         //构建REMOVE方法并拓展String.remove(query)
         runtime.globalObject.setProperty("REMOVE", runtime.createJSFunction() { context, args ->
             val html = args[0].castString()
-            val document = Jsoup.parseBodyFragment(html).body().child(0)
+            val document =
+                try { Jsoup.parseBodyFragment(html).body().child(0) }
+                catch (_: Exception) { Jsoup.parse(html).body()
+                    .let { try {it.child(0)} catch (_: Exception) {it} } }
             try {
                 val array = args[1].cast(JSArray::class.java)
                 (0 until array.length).forEach { index ->
@@ -457,10 +461,19 @@ object NetworkBridge {
         //构建TEXT方法并拓展String.attr(key)
         runtime.globalObject.setProperty("ATTR", runtime.createJSFunction() { context, args ->
             val html = args[0].castString()
+            /*
             val document = Jsoup.parseBodyFragment(html).body()
             if (document.childrenSize() == 0) {
                 return@createJSFunction context.createJSString("")
             }
+            val attributeKey = args[1].cast(JSString::class.java).string
+            val value = document.child(0).attr(attributeKey).trim()
+            */
+            val document = listOf(
+                Jsoup.parseBodyFragment(html).body(),
+                Jsoup.parse(html).body()
+            ).firstOrNull { it.childrenSize() != 0 }
+                ?: return@createJSFunction context.createJSString("")
             val attributeKey = args[1].cast(JSString::class.java).string
             val value = document.child(0).attr(attributeKey).trim()
             return@createJSFunction context.createJSString(value)
@@ -477,7 +490,10 @@ object NetworkBridge {
         runtime.globalObject.setProperty("TEXT", runtime.createJSFunction() { context, args ->
             val html = args[0].castString()
             if (html.isBlank()) return@createJSFunction context.createJSString("")
-            val document = Jsoup.parseBodyFragment(html).body().child(0)
+            val document =
+                try { Jsoup.parseBodyFragment(html).body().child(0) }
+                catch (_: Exception) { Jsoup.parse(html).body()
+                    .let { try {it.child(0)} catch (_: Exception) {it} } }
             return@createJSFunction context.createJSString(document.text().trim())
         })
         runtime.evaluate(
@@ -490,10 +506,20 @@ object NetworkBridge {
             Console.println(args[0].cast(JSString::class.java).string)
             return@createJSFunction context.createJSUndefined()
         })
+        /*
         runtime.evaluate(
             "const console = {log: function(arg) { LOG(typeof arg !== 'object' ? String(arg) : JSON.stringify(arg)) }}",
             filename
         )
+        */
+        runtime.evaluate("""
+            const console = {
+                log: function(arg) {
+                    LOG(TO_STRING(arg));
+                }
+            }
+        """.trimIndent(), filename)
+
         //参数提取
         runtime.evaluate(
             "String.prototype.query=function(variable) { let index = this.valueOf().indexOf(\"?\"); if(index > -1) { var vars = this.valueOf().substring(index + 1).split(\"&\"); for (var i=0;i<vars.length;i++) { var pair = vars[i].split(\"=\"); if(pair[0] == variable){return pair[1];} } return '';} else return '';}",
@@ -507,6 +533,8 @@ object NetworkBridge {
             Log.e("NetworkBridge", "runtime.evaluate error, filename: $filename", e)
             Console.println(e.message.orEmpty(), Console.Type.Build)
         }
+
+        JSBridge.inject(runtime, filename)
     }
 
     /**
@@ -523,6 +551,11 @@ object NetworkBridge {
             val config = args.getOrNull(1)?.cast(JSObject::class.java)
             var data: String? = null
             val headers = mutableListOf<String>()
+            var charset: Charset? = null
+            try {
+                config?.getProperty("charset")?.cast(JSString::class.java)?.string
+                    ?.let { charset = charset(it) }
+            } catch (e: JSDataException) {}
             try {
                 data = config?.getProperty("data")?.cast(JSString::class.java)?.string
             } catch (e: JSDataException) {
@@ -546,9 +579,9 @@ object NetworkBridge {
                 null
             }
             val result = if (client == 0x01) {
-                request(method, url, data, headers, unzipFilename)
+                request(method, url, data, headers, unzipFilename, charset)
             } else {
-                requestJsoup(method, url, data, headers)
+                requestJsoup(method, url, data, headers, charset)
             }.trim().trim { it == '\ufeff' }
             Console.println(result, Console.Type.Response)
             return result

@@ -1,10 +1,14 @@
 package cn.lightink.reader.ui.discover.storage
 
+import android.content.pm.PackageManager
+import android.Manifest
+import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.LinearLayoutManager
 import cn.lightink.reader.R
@@ -88,7 +92,41 @@ abstract class StorageFragment : LifecycleFragment() {
 
     override fun onResume() {
         super.onResume()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (
+                ContextCompat.checkSelfPermission(requireContext(),
+                    Manifest.permission.READ_EXTERNAL_STORAGE
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), 100)
+            } else {
+                currentDir?.let { openDir(it, pushStack = false) }
+            }
+        }
+
         setLoadingFile(null)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == 100) {
+            if (
+                grantResults.isNotEmpty() &&
+                grantResults[0] == PackageManager.PERMISSION_GRANTED
+            ) {
+                requireContext().toast("存储权限已授予")
+
+                currentDir?.let {
+                    openDir(it, false)
+                }
+            }
+        }
     }
 
     protected fun runWithLoadingFile(

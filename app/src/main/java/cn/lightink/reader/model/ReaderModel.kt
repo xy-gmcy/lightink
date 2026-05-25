@@ -61,8 +61,8 @@ data class Chapter(val index: Int, var title: String, var href: String, var leve
             href = markdown.substringAfterLast("](", EMPTY).substringBeforeLast(")", EMPTY),
             level = markdown.substringBefore("*").count { it == '\t' },
 
-            update = markdown.substringAfter("{<").substringBefore("><"),
-            words = markdown.substringAfter("><").substringBefore(">}")
+            update = markdown.substringAfter("{<", EMPTY).substringBefore("><", EMPTY),
+            words = markdown.substringAfter("><", EMPTY).substringBefore(">}", EMPTY)
     )
 
     val encodeHref: String

@@ -4,21 +4,34 @@ import android.net.Uri
 import android.util.Base64
 import android.util.Log
 import android.webkit.URLUtil
+import androidx.core.net.toUri
 import androidx.core.text.HtmlCompat
 import cn.lightink.reader.ktx.*
 import cn.lightink.reader.model.Book
 import cn.lightink.reader.model.BookSource
 import cn.lightink.reader.module.*
 import cn.lightink.reader.net.Http
+import cn.lightink.reader.transcode.JSBridge.createJSValueFrom
+import cn.lightink.reader.transcode.JSBridge.string
+import cn.lightink.reader.transcode.NetworkBridge
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
+import com.hippo.quickjs.android.JSArray
+import com.hippo.quickjs.android.JSBoolean
+import com.hippo.quickjs.android.JSContext
+import com.hippo.quickjs.android.JSObject
+import com.hippo.quickjs.android.JSString
+import com.hippo.quickjs.android.JSValue
+import com.hippo.quickjs.android.QuickJS
 import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.TypeRef
 import org.jsoup.Jsoup
+import org.jsoup.nodes.DataNode
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.jsoup.nodes.Node
+import org.jsoup.nodes.TextNode
 import org.jsoup.select.Elements
 import org.jsoup.select.Selector
 import java.io.File
@@ -26,8 +39,12 @@ import java.io.FileNotFoundException
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.regex.PatternSyntaxException
+import kotlin.collections.first
 
 class BookSourceParser(val bookSource: BookSource) {
+
+    private val scriptList = mutableMapOf<String, String>()
+    private val responseCache = ResponseCache()
 
     private val dateFormat by lazy { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINESE) }
 
@@ -42,6 +59,7 @@ class BookSourceParser(val bookSource: BookSource) {
         } else {
             val url = bookSource.json.search.url.replace("\${key}", key.encode(bookSource.json.search.charset))
             val response = BookSourceInterpreter.execute(url, bookSource.json.auth) ?: return emptyList()
+            responseCache.put("search", response)
             val results = findList(response, bookSource.json.search.list).map { findSearchMetadata(it) }
             if (results.isNullOrEmpty()) {
                 val metadata = findDetailMetadata(response.url, response)
@@ -72,6 +90,7 @@ class BookSourceParser(val bookSource: BookSource) {
             }
         } else {
             val response = BookSourceInterpreter.execute(metadata.detail, bookSource.json.auth) ?: return null
+            responseCache.put("detail", response)
             val detail = findDetailMetadata(metadata.detail, response)
             if (detail.name.isBlank()) detail.name = metadata.name
             if (detail.author.isBlank()) detail.author = metadata.author
@@ -102,6 +121,7 @@ class BookSourceParser(val bookSource: BookSource) {
                 urls.add(metadata.catalog as String)
                 BookSourceInterpreter.execute(metadata.catalog as String, bookSource.json.auth) ?: return emptyList()
             }
+            responseCache.put("catalog", response)
             chapters.addAll(findList(response, bookSource.json.catalog.list))
             //检查下一页
             if (bookSource.json.catalog.page.isNotBlank()) {
@@ -161,16 +181,15 @@ class BookSourceParser(val bookSource: BookSource) {
                     "" -> { item ->
                         when (item.body) {
                             is Element -> {
-                                item.body.nextElementSiblings()
-                                    .let { elements ->
-                                        val next = elements.firstOrNull { element ->
-                                            element.`is`(bookSource.json.catalog.list)
-                                        }
-                                        if (next != null) elements.subList(0, elements.indexOf(next))
-                                        else elements
-                                    }.apply { this.add(0, item.body) }.map {
-                                        BookSourceResponse(item.url, it)
-                                    }.flatMap { findList(it, booklet.list) }
+                                item.body.nextElementSiblings().let { elements ->
+                                    val next = elements.firstOrNull { element ->
+                                        element in list.map { it.body }
+                                    }
+                                    if (next != null) elements.subList(0, elements.indexOf(next))
+                                    else elements
+                                }.apply { this.add(0, item.body) }.map {
+                                    BookSourceResponse(item.url, it)
+                                }.flatMap { findList(it, booklet.list) }
                             }
                             else -> { findList(item, booklet.list) }
                         }
@@ -179,6 +198,7 @@ class BookSourceParser(val bookSource: BookSource) {
                         val url = findValue(item, booklet.url, true).trim()
                         if (URLUtil.isNetworkUrl(url)) {
                             val response = BookSourceInterpreter.execute(url, bookSource.json.auth)
+                            if (response != null) responseCache.put("booklet", response)
                             findList(response ?: item, booklet.list)
                         } else { findList(item, booklet.list) }
                     }
@@ -235,6 +255,7 @@ class BookSourceParser(val bookSource: BookSource) {
            return bookSource.js.chapter(cn.lightink.reader.transcode.entity.Chapter(title,url)).orEmpty()
         } else {
             val response = BookSourceInterpreter.execute(url, bookSource.json.auth) ?: return GET_FAILED_NET_THROWABLE
+            responseCache.put("chapter", response)
             //vip章节
             if (bookSource.json.auth?.vip?.isNotBlank() == true && findValue(response, bookSource.json.auth!!.vip) == "true") {
                 //未购买
@@ -318,6 +339,7 @@ class BookSourceParser(val bookSource: BookSource) {
      */
     fun queryRank(url: String, rank: BookSourceJson.Rank): List<SearchMetadata> {
         val response = BookSourceInterpreter.execute(url, bookSource.json.auth) ?: return emptyList()
+        responseCache.put("rank", response)
         return findList(response, if (rank.list.isNotBlank()) rank.list else bookSource.json.search.list).map { findRankMetadata(it, rank) }
     }
 
@@ -413,6 +435,7 @@ class BookSourceParser(val bookSource: BookSource) {
         other = findValue(response, bookSource.json.search.other),
     )
 
+    /*
     private fun findValue(response: BookSourceResponse, query: String, isHref: Boolean = false): String {
         if (query.isBlank()) return EMPTY
         return when (response.body) {
@@ -421,10 +444,12 @@ class BookSourceParser(val bookSource: BookSource) {
             else -> response.body.toString()
         }
     }
+    */
 
     /**
      * 查找Json值
      */
+    /*
     @Suppress("RegExpRedundantEscape")
     private fun findValueByJson(response: BookSourceResponse, query: Query, isHref: Boolean): String {
         val variables = Regex("""(?<=\$\{).+?(?=\})""").findAll(query.query).map { it.value }.toSet()
@@ -441,6 +466,7 @@ class BookSourceParser(val bookSource: BookSource) {
             findValueByQuery(value, response.url, query, isHref)
         }
     }
+    */
 
     /**
      * 查找Json中指定变量值
@@ -465,6 +491,7 @@ class BookSourceParser(val bookSource: BookSource) {
     /**
      * 查找Html值
      */
+    /*
     @Suppress("RegExpRedundantEscape")
     private fun findValueByHtml(response: BookSourceResponse, query: Query, isHref: Boolean): String {
         val variables = Regex("""(?<=\$\{).+?(?=\})""").findAll(query.query).map { it.value }.toSet()
@@ -481,10 +508,12 @@ class BookSourceParser(val bookSource: BookSource) {
             findValueByQuery(value, response.url, query, isHref)
         }
     }
+    */
 
     /**
      * 查找Html中指定变量值
      */
+    /*
     private fun findHtmlValueByVariable(variable: String, body: Any, isHref: Boolean, uri: Uri) = if (variable.startsWith("\$params.")) {
         //URL参数
         uri.getQueryParameter(variable.removePrefix("\$params.")).orEmpty()
@@ -509,10 +538,12 @@ class BookSourceParser(val bookSource: BookSource) {
             else -> node.text()
         }
     }
+    */
 
     /**
      * 执行Query操作符
      */
+    /*
     private fun findValueByQuery(string: String, url: String, query: Query, isHref: Boolean): String {
         var value = string
         if (!query.decrypt.isNullOrBlank()) {
@@ -537,10 +568,12 @@ class BookSourceParser(val bookSource: BookSource) {
         }
         return value.trim()
     }
+    */
 
     /**
      * 查询列表
      */
+    /*
     private fun findList(response: BookSourceResponse, query: String) = try {
         when (response.body) {
             is Document -> queryList(response.body, query).map { BookSourceResponse(response.url, it) }
@@ -552,6 +585,7 @@ class BookSourceParser(val bookSource: BookSource) {
         //异常查询返回空列表
         emptyList<BookSourceResponse>()
     }
+    */
 
     /**
      * 读取Html内容
@@ -560,7 +594,8 @@ class BookSourceParser(val bookSource: BookSource) {
      */
     private fun findJsonContent(response: BookSourceResponse, output: String): String {
         var content = if (bookSource.json.chapter.content.isNotBlank()) {
-            findValueByJson(response, Query.build(bookSource.json.chapter.content), false)
+            //findValueByJson(response, Query.build(bookSource.json.chapter.content), false, false)
+            findValue(response, bookSource.json.chapter.content, false)
         } else response.body as String
         if (content.isHtml()) {
             content = findHtmlContent(BookSourceResponse(response.url, Jsoup.parseBodyFragment(content)), BODY, output)
@@ -593,6 +628,7 @@ class BookSourceParser(val bookSource: BookSource) {
      * @param response  源数据
      * @param output    输出路径 用于保存图片
      */
+    /*
     private fun findHtmlContent(response: BookSourceResponse, query: String, output: String): String {
         val filters = bookSource.json.chapter.filter.map { if (it.startsWith("@")) it.removePrefix("@") else findValue(response, it) }
         val buffer = StringBuilder()
@@ -607,6 +643,7 @@ class BookSourceParser(val bookSource: BookSource) {
         }
         return buffer.toString()
     }
+    */
 
     /**
      * 读取Html
@@ -674,5 +711,297 @@ class BookSourceParser(val bookSource: BookSource) {
             return "![${node.attr("alt")}](${file.name})"
         }
         return EMPTY
+    }
+
+    private fun findValue(response: BookSourceResponse, query: String, isHref: Boolean = false, isExpression: Boolean = true): String {
+        if (query.isBlank()) return ""
+        var expression = query
+        var isString = isExpression.not()
+        while (true) {
+            val scripts = Regex("""@js->.*?->end""").findAll(expression).toList()
+            scripts.forEach { script ->
+                val key = "script#${scriptList.size}"
+                val value = script.value.removeSurrounding("@js->", "->end")
+                expression = expression.replaceFirst(script.value, "@js->$key")
+                scriptList[key] = value
+            }
+            val matches = Regex("""\$\{(?:\$[^{]|[^$]\{|[^{$])*?(?:[^\\]|\\\\)?\}""")
+                .findAll(expression).toList()
+            if (matches.isEmpty()) break
+            matches.forEach { match ->
+                val value = match.value.removeSurrounding("\${", "}")
+                val result = findValue(response, value, isHref, isString.not())
+                expression = expression.replaceFirst(match.value, result)
+            }
+            isString = true
+        }
+        return when (response.body) {
+            is Document, is Element -> findValueByHtml(response, Query.build(expression), isHref, isString)
+            is String -> findValueByJson(response, Query.build(expression), isHref, isString)
+            else -> response.body.toString()
+        }
+    }
+    /**
+     * 查找Json值
+     */
+    @Suppress("RegExpRedundantEscape")
+    private fun findValueByJson(response: BookSourceResponse, query: Query, isHref: Boolean, isString: Boolean): String {
+        val string =
+            if (isString) query.query
+            else findJsonValueByVariable(query.query, response.body as String, response.url.toUri())
+        return findValueByQuery(string, response.url, query, isHref)
+    }
+    /**
+     * 查找Html值
+     */
+    @Suppress("RegExpRedundantEscape")
+    private fun findValueByHtml(response: BookSourceResponse, query: Query, isHref: Boolean, isString: Boolean): String {
+        val value =
+            if (isString) query.query
+            else findHtmlValueByVariable(query.query, response.body, isHref, response.url.toUri())
+        return findValueByQuery(value, response.url, query, isHref)
+    }
+
+    /**
+     * 查找Html中指定变量值
+     */
+    private fun findHtmlValueByVariable(variable: String, body: Any, isHref: Boolean, uri: Uri): String {
+        return if (variable.startsWith("\$params.")) {
+            //URL参数
+            uri.getQueryParameter(variable.removePrefix("\$params.")).orEmpty()
+        } else {
+            //Html取值
+            val reg = Regex("""@(?:attr->|text|wholeText|ownText|data|textNodes|href|html|outerHtml)""")
+            val query = variable.split(reg)
+            val node: Element? = when (body) {
+                is Document -> queryFirst(body, query.first())
+                is Element -> queryFirst(body, query.first())
+                else -> null
+            }
+            when {
+                node == null -> ""
+                query.lastIndex != 0 -> {
+                    val operator = variable.removeSuffix(query.last())
+                        .substringBeforeLast("->").substringAfterLast("@")
+                    when (operator) {
+                        "attr" -> node.attr(query.last())
+                        "text" -> node.text()
+                        "wholeText" -> node.wholeText()
+                        "ownText" -> node.ownText()
+                        "data" -> node.data()
+                        "textNodes" -> node.textNodes().joinToString("") { it.text() }
+                        "href" -> node.href()
+                        "html" -> node.html()
+                        "outerHtml" -> node.outerHtml()
+                        else -> ""
+                    }
+                }
+                isHref -> node.href()
+                node.tagName() == STYLE || node.tagName() == SCRIPT -> node.data()
+                else -> node.text()
+            }
+        }
+    }
+
+    /**
+     * 执行Query操作符
+     */
+    private fun findValueByQuery(input: Any, url: String, query: Query, isHref: Boolean, filters: List<String> = emptyList(), output: String = ""): String {
+        var value = input
+        Log.d("findValueByQuery", "input: $input")
+        Log.d("findValueByQuery", "query: $query")
+        return javaScript { context ->
+            var temp: JSValue? = null
+            query.operators.forEachIndexed { index, operator ->
+                when (operator.first) {
+                    "js" -> {
+                        val script = scriptList[operator.second] ?: return@forEachIndexed
+                        Log.d("findValueByQuery", "script: $script")
+                        context.globalObject.setProperty("$", temp ?: context.createJSValueFrom(value))
+                        temp = context.evaluate(script, bookSource.url, JSValue::class.java)
+                            ?: return@forEachIndexed
+                        Log.d("findValueByQuery", "temp: ${context.string(temp as JSValue)}")
+                        if (index == query.operators.lastIndex || query.operators[index+1].first != "js") {
+                            value =
+                                try { (temp as JSString).string }
+                                catch (e: Exception) { context.string(temp as JSValue) }
+                            temp = null
+                        }
+                    }
+                    "match" -> {
+                        try {
+                            value = Regex(operator.second).find(value as String)?.value ?: ""
+                        } catch (e: PatternSyntaxException) {}
+                    }
+                    "equal" -> value = (value == operator.second).toString()
+                    "equalNot" -> value = (value != operator.second).toString()
+                    "replace" -> {
+                        val list = operator.second.split("->")
+                        if (list.first().let { it.startsWith("/") && it.endsWith("/") }) {
+                            try {
+                                val regex = list.first().removeSurrounding("/").toRegex()
+                                value = (value as String).replace(regex, list.last())
+                            } catch (e: PatternSyntaxException) {}
+                        } else {
+                            value = (value as String).replace(list.first(), list.last())
+                        }
+                    }
+                    "decrypt" -> {
+                        when (operator.second.lowercase()) {
+                            "base64" -> value = String(Base64.decode(value as String, Base64.DEFAULT))
+                        }
+                    }
+                }
+            }
+            value = when {
+                temp == null && value is Element -> {
+                    filters.forEach { if (it.isNotBlank()) (value as Element).select(it).remove()}
+                    fromHtml(value as Element, url, output)
+                }
+                temp == null && value is String -> (value as String)
+                temp != null -> try {
+                    ((temp as JSObject).getProperty("JsoupObject")
+                        .cast(JSObject::class.java).javaObject as Element).apply {
+                            filters.forEach { select(it).remove() }
+                        }.let { fromHtml(it, url, output) }
+                } catch (e: Exception) { context.string(temp as JSValue) }
+                else -> return@javaScript ""
+            }
+            if (isHref) value = (value as String).autoUrl(url)
+            Log.d("findValueByQuery", "result: $value")
+            return@javaScript value as String
+        }
+    }
+
+    /**
+     * 查询列表
+     */
+    private fun findList(response: BookSourceResponse, query: String): List<BookSourceResponse> {
+        try {
+            val matches = Regex("""@js->.*?->end""").findAll(query).toList()
+            if (matches.isNotEmpty()) {
+                val expression = query.substringBefore(matches.first().value)
+                val list = when (response.body) {
+                    is Document, is Element -> queryList(response.body as Element, expression)
+                    is String -> JsonPath.parse(response.body).read(expression,
+                        object : TypeRef<List<JsonObject>>() {}).map { it.toJson() }
+                    else -> return emptyList()
+                }
+                Log.d("findList", "list: $list")
+                Log.d("findList", "expression: $expression")
+                return javaScript { context ->
+                    var temp: JSValue? = null
+                    matches.forEach { match ->
+                        val script = match.value.removeSurrounding("@js->", "->end")
+                        Log.d("findList", "script: $script")
+                        context.globalObject.setProperty("$", temp ?: context.createJSValueFrom(list))
+                        temp = context.evaluate(script, bookSource.url, JSValue::class.java)
+                            ?: return@forEach
+                        Log.d("findList", "temp: ${context.string(temp as JSValue)}")
+                    }
+                    return@javaScript (temp?.cast(JSArray::class.java)
+                        ?: return@javaScript list).let { array ->
+                             (0 until array.length).mapNotNull { index ->
+                                 array.getProperty(index).apply {
+                                     val isJsoupObject =
+                                         try {
+                                             cast(JSObject::class.java)
+                                                 .getProperty("isJsoupObject")
+                                                 .cast(JSBoolean::class.java).boolean
+                                         } catch (e: Exception) { false }
+                                     return@mapNotNull when {
+                                         isJsoupObject -> cast(JSObject::class.java).let {
+                                             val type = it.getProperty("type")
+                                                 .cast(JSString::class.java).string
+                                             val jsoupObject = it.getProperty("JsoupObject")
+                                                 .cast(JSObject::class.java).javaObject
+                                             when (type) {
+                                                 "document" -> jsoupObject as Document
+                                                 "element" -> jsoupObject as Element
+                                                 "textNode" -> jsoupObject as TextNode
+                                                 "dataNode" -> jsoupObject as DataNode
+                                                 "node" -> jsoupObject as Node
+                                                 else -> null
+                                             }
+                                         }
+                                         else -> context.string(this)
+                                     }
+                                 }
+                             }
+                        }
+                }.map {
+                    Log.d("findList", "result: $it")
+                    BookSourceResponse(response.url, it) }
+            }
+            return when (response.body) {
+                is Document -> queryList(response.body, query)
+                    .map { BookSourceResponse(response.url, it) }
+                is Element -> queryList(response.body, query)
+                    .map { BookSourceResponse(response.url, it) }
+                is String -> JsonPath.parse(response.body)
+                    .read(query, object : TypeRef<List<JsonObject>>() {})
+                    .map { BookSourceResponse(response.url, it.toJson()) }
+                else -> emptyList()
+            }
+        } catch (e: Exception) { return emptyList() }
+    }
+
+    /**
+     * 读取Html内容
+     * @param response  源数据
+     * @param output    输出路径 用于保存图片
+     */
+    private fun findHtmlContent(response: BookSourceResponse, query: String, output: String): String {
+        val filters = bookSource.json.chapter.filter
+            .map { if (it.startsWith("@")) it.removePrefix("@") else findValue(response, it) }
+        val buffer = StringBuilder()
+        try {
+            var expression = query
+            var isString = false
+            while (true) {
+                val scripts = Regex("""@js->.*?->end""").findAll(expression).toList()
+                scripts.forEach { script ->
+                    val key = "script#${scriptList.size}"
+                    val value = script.value.removeSurrounding("@js->", "->end")
+                    expression = expression.replaceFirst(script.value, "@js->$key")
+                    scriptList[key] = value
+                }
+                val matches = Regex("""\$\{(?:\$[^{]|[^$]\{|[^{$])*?(?:[^\\]|\\\\)?\}""")
+                    .findAll(expression).toList()
+                if (matches.isEmpty()) break
+                matches.forEach { match ->
+                    val value = match.value.removeSurrounding("\${", "}")
+                    val result = findValue(response, value, false, isString.not())
+                    expression = expression.replaceFirst(match.value, result)
+                }
+                isString = true
+            }
+            Query.build(expression).apply {
+                queryList(response.body as Element, this.query).forEach { element ->
+                    findValueByQuery(element, response.url, this, false, filters, output)
+                        .let { buffer.append(it) }
+                    buffer.append("\n")
+                }
+            }
+        } catch (e: Selector.SelectorParseException) { }
+        return buffer.toString()
+    }
+
+    private fun <T> javaScript(callback: (JSContext) -> T): T {
+        QuickJS.Builder().build().createJSRuntime().use { runtime ->
+            runtime.createJSContext().use { context ->
+                NetworkBridge.inject(context, bookSource.url, "")
+                context.globalObject.setProperty("response", context.createJSObject().apply {
+                        setProperty("search", context.createJSValueFrom(responseCache.search))
+                        setProperty("detail", context.createJSValueFrom(responseCache.detail))
+                        setProperty("catalog", context.createJSValueFrom(responseCache.catalog))
+                        setProperty("booklet", context.createJSValueFrom(responseCache.booklet))
+                        setProperty("chapter", context.createJSValueFrom(responseCache.chapter))
+                        setProperty("rank", context.createJSValueFrom(responseCache.rank))
+                    }
+                )
+                return callback(context)
+            }
+        }
     }
 }
