@@ -16,6 +16,7 @@ import cn.lightink.reader.ktx.change
 import cn.lightink.reader.ktx.size
 import cn.lightink.reader.ktx.toast
 import cn.lightink.reader.module.ListAdapter
+import cn.lightink.reader.module.Preferences
 import cn.lightink.reader.ui.base.LifecycleFragment
 import cn.lightink.reader.ui.base.PopupMenu
 import kotlinx.android.synthetic.main.fragment_storage.*
@@ -31,6 +32,7 @@ abstract class StorageFragment : LifecycleFragment() {
     private val adapter by lazy { buildAdapter() }
     private var loadingPath: String? = null
     protected var currentDir: File? = null
+    protected var showHiddenFiles: Boolean = Preferences.get(Preferences.Key.HIDDEN_FILES, false)
     protected val dirStack = mutableListOf<File>()
 
     abstract fun getDefaultDir(): File
@@ -165,11 +167,16 @@ abstract class StorageFragment : LifecycleFragment() {
     private fun showPopup() {
         PopupMenu(requireActivity())
             .gravity(Gravity.END)
-            .items(R.string.default_storage_path)
+            .items(R.string.default_storage_path, R.string.hidden_files)
             .callback { item ->
                 when (item) {
                     R.string.default_storage_path -> {
                         currentDir?.let { onSaveCurrentPath(it) }
+                    }
+                    R.string.hidden_files -> {
+                        showHiddenFiles = !showHiddenFiles
+                        Preferences.put(Preferences.Key.HIDDEN_FILES, showHiddenFiles)
+                        currentDir?.let { openDir(it, false) }
                     }
                 }
             }
@@ -188,6 +195,9 @@ abstract class StorageFragment : LifecycleFragment() {
                         return@filter true
                     }
                 else it.name.contains(keyword, false) }
+            ?.let { list ->
+                if (showHiddenFiles) list
+                else list.filter { file ->  !file.isHidden } }
             ?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name })
             ?: emptyList()
 

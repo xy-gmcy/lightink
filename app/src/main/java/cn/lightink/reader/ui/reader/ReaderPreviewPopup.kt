@@ -71,4 +71,10 @@ class ReaderPreviewPopup(val activity: ReaderActivity) : PopupWindow(ViewGroup.L
         if (!isShowing) showAtLocation(activity.window.decorView, Gravity.TOP or Gravity.END, 0, 0)
     }
 
+    @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+    fun onDestroy() {
+        activity.lifecycle.removeObserver(this)
+        dismiss()
+    }
+
 }

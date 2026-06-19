@@ -1,5 +1,7 @@
 package cn.lightink.reader.transcode
 
+import cn.lightink.reader.ktx.href
+import cn.lightink.reader.ktx.src
 import com.hippo.quickjs.android.*
 import org.jsoup.Connection
 import org.jsoup.Jsoup
@@ -149,7 +151,7 @@ object JSBridge {
                 if (args.length == 0) return createJsoupObject(element.apply { remove() })
                 val query = args.getProperty(0).cast(JSString::class.java).string
                 element.select(query).remove()
-                createJSObject(element)
+                createJsoupObject(element)
             }
             "wrap" -> {
                 val html = args.getProperty(0).cast(JSString::class.java).string
@@ -159,10 +161,10 @@ object JSBridge {
                 if (args.length == 0) return createJsoupObject(element.apply{ unwrap() })
                 val query = args.getProperty(0).cast(JSString::class.java).string
                 element.select(query).unwrap()
-                createJSObject(element)
+                createJsoupObject(element)
             }
-            "`val`" -> createJSString(element.`val`())
-            "`is`" -> {
+            "val" -> createJSString(element.`val`())
+            "is" -> {
                 val query = args.getProperty(0).cast(JSString::class.java).string
                 createJSBoolean(element.`is`(query))
             }
@@ -178,6 +180,11 @@ object JSBridge {
             "hasParent" -> createJSBoolean(element.hasParent())
             "childrenSize" -> createJSNumber(element.childrenSize())
             "baseUri" -> createJSString(element.baseUri())
+            "href" -> createJSString(element.href())
+            "src" -> {
+                val url = args.getProperty(0).cast(JSString::class.java).string
+                createJSString(element.src(url))
+            }
             "absUrl" -> {
                 val absUrl = args.getProperty(0).cast(JSString::class.java).string
                 createJSString(element.absUrl(absUrl))
@@ -321,8 +328,12 @@ object JSBridge {
     private fun JSContext.createJsoup() {
 
         globalObject.setProperty("Parser", createJSObject().apply {
-            setProperty("htmlParser", createJSObject(Parser.htmlParser()))
-            setProperty("xmlParser", createJSObject(Parser.xmlParser()))
+            setProperty("htmlParser", createJSFunction { context, _ ->
+                return@createJSFunction context.createJsoupObject(Parser.htmlParser())
+            })
+            setProperty("xmlParser", createJSFunction { context, _ ->
+                return@createJSFunction context.createJsoupObject(Parser.xmlParser())
+            })
         })
 
         globalObject.setProperty("Jsoup", createJSObject().apply {
@@ -428,6 +439,7 @@ object JSBridge {
             setProperty("type", createJSString(type))
             setProperty("isJsoupObject", createJSBoolean(true))
         }.let {
+            if (obj is Parser) return it
             globalObject.getProperty("jsoupObjectProxy").cast(JSFunction::class.java)
                 .invoke(null, arrayOf(it))
         }

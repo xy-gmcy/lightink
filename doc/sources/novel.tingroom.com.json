@@ -1,0 +1,52 @@
+{
+  "name": "英文小说网",
+  "url": "novel.tingroom.com",
+  "version": 100,
+  "search": {
+    "url": "https://novel.tingroom.com/novel_search.php?kw=${key}&page=${page}",
+    "charset": "utf-8",
+    "list": "div.list",
+    "name": "h6 > a",
+    "author": "p.cateq > span > a",
+    "cover": "div.picture > a > img",
+    "category": "p.cateq > a",
+    "detail": "h6 > a"
+  },
+  "detail": {
+    "name": "div#focus_book_info > h1",
+    "author": "div#focus_book_info > span > a",
+    "summary": "div#infoShort",
+    "catalog": "a#linkzhang"
+  },
+  "catalog": {
+    "list": "div#tt_text > ol > li",
+    "name": "a",
+    "chapter": "a"
+  },
+  "chapter": {
+    "content":"div#tt_text"
+  },
+  "rank": [
+    {
+      "title":"排行榜",
+      "url": "http://novel.tingroom.com/${key}.php?page=${page}",
+      "page": 1,
+      "size": 10,
+      "categories": [
+        {"value":"点击排行榜","key":"count"},{"value":"最新入库","key":"new"}
+      ]
+    },
+    {
+      "title":"分类",
+      "url": "http://novel.tingroom.com/${key}_${page}.html",
+      "page": 1,
+      "size": 10,
+      "categories": [
+        {"value":"经典英文小说","key":"jingdian/list_1"},{"value":"双语小说","key":"shuangyu/list_33"},
+        {"value":"英文名人传记","key":"mingren/list_32"},{"value":"英文励志小说","key":"lizhi/list_6"},
+        {"value":"英文短篇小说","key":"duanpian/list_31"},{"value":"英文科幻小说","key":"kehuan/list_30"},
+        {"value":"儿童英文小说","key":"ertong/list_29"},{"value":"英文宗教小说","key":"zongjiao/list_28"}
+      ]
+    }
+  ]
+}

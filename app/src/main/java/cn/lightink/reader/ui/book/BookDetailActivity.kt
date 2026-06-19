@@ -296,11 +296,16 @@ class BookDetailActivity : LifecycleActivity() {
         //item.view.setTextSize(TypedValue.COMPLEX_UNIT_SP, if (chapter.url.isNotEmpty()) 15F else 12F)
         item.view.setOnClickListener { preview(mBookDetailRecycler.adapter!!.itemCount - 1 - item.adapterPosition, chapter) }
 
+        val chapters = controller.catalogLive.value
+        val level = chapters != null && chapters.none{ it.useLevel }
         (item.view.mChapterTitle as TextView).text = chapter.name
         item.view.mChapterTitle.setTextColor(getColor(if (chapter.url.isNotEmpty()) R.color.colorTitle else R.color.colorContent))
-        item.view.mChapterTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, if (chapter.url.isNotEmpty()) 15F else 12F)
+        item.view.mChapterTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, if (chapter.url.isNotEmpty() && (chapter.useLevel || level)) 15F else 12F)
         val info = listOf(chapter.words, chapter.update).filter { it.isNotBlank() }
-        if (info.isEmpty()) item.view.mChapterInfo.visibility = View.GONE
-        else item.view.mChapterInfo.text = info.joinToString(" | ")
+        if (info.isEmpty() || (!chapter.useLevel && !level)) {
+            item.view.mChapterInfo.visibility = View.GONE
+        } else {
+            item.view.mChapterInfo.text = info.joinToString(" | ")
+        }
     }
 }

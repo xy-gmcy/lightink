@@ -74,6 +74,12 @@ class SettingActivity : LifecycleActivity() {
                 stopChaseUpdateWorker()
             }
         }
+        //强制预加载
+        mSettingEnablePreload.parentView.parentView.setOnClickListener { mSettingEnablePreload.toggle() }
+        mSettingEnablePreload.setCheckedImmediatelyNoEvent(Preferences.get(Preferences.Key.ENABLE_PRELOAD, false))
+        mSettingEnablePreload.setOnCheckedChangeListener { _, isChecked ->
+            Preferences.put(Preferences.Key.ENABLE_PRELOAD, isChecked)
+        }
     }
 
     /**

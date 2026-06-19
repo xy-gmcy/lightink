@@ -66,7 +66,7 @@ object BookCacheModule {
                 if (!isCaching(book)) return@forEachIndexed
                 val file = File(book.path, "$MP_FOLDER_TEXTS/${chapter.encodeHref}.md")
                 if (file.exists().not()) {
-                    val content = parser.findContent(chapter.href, "${book.path}/$MP_FOLDER_IMAGES")
+                    val content = parser.findContent(chapter.title, chapter.href, "${book.path}/$MP_FOLDER_IMAGES")
                     if (content.isNotBlank() && content != GET_FAILED_NET_THROWABLE) try {
                         file.writeText(content)
                     } catch (e: FileNotFoundException) {

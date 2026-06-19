@@ -46,16 +46,26 @@ class JavaScriptTranscoder(private val host: String, private val bookSource: Str
     /**
      * 搜索
      */
-    fun search(key: String) = javaScript { context ->
+    fun search(key: String, page: Int) = javaScript { context ->
         try {
-            val response = context.evaluate("search('$key');", filename, String::class.java)
-            val results = response.decodeJson<List<SearchResult>>()
-            return@javaScript results.filter {
-                it.filter ?: (it.author.isNotBlank() && (it.name.contains(key) || it.author.contains(key)))
+            val response = context.evaluate("search('$key', $page);", filename, String::class.java)
+            try {
+                val results = response.decodeJson<List<SearchResult>>()
+                return@javaScript PagingBooks.build(results.filter {
+                    it.filter ?: (it.author.isNotBlank() && (it.name.contains(key) || it.author.contains(key)))
+                })
+            } catch (e: Exception) {
+                val results = response.decodeJson<PagingBooks>()
+                return@javaScript PagingBooks(
+                    results.books.filter {
+                        it.filter ?: (it.author.isNotBlank() && (it.name.contains(key) || it.author.contains(key)))
+                    },
+                    results.books.isEmpty()
+                )
             }
         } catch (e: Exception) {
-            Log.w("JavaScriptTranscoder", "search error, key: $key, bookSource: $host", e)
-            return@javaScript null
+            Log.w("JavaScriptTranscoder", "search error, key: $key, page: $page, bookSource: $host", e)
+            return@javaScript PagingBooks.build(emptyList())
         }
     }
 
@@ -131,9 +141,17 @@ class JavaScriptTranscoder(private val host: String, private val bookSource: Str
      * 排行榜
      */
     suspend fun rank(title: String, category: String, page: Int) = javaScript { context ->
-        val response =
-            context.evaluate("rank('$title', '$category', $page);", filename, String::class.java)
-        return@javaScript response.decodeJson<PagingBooks>()
+        try {
+            val response = context.evaluate("rank('$title', '$category', $page);", filename, String::class.java)
+            try {
+                return@javaScript response.decodeJson<PagingBooks>()
+            } catch (e: Exception) {
+                return@javaScript PagingBooks.build(response.decodeJson<List<SearchResult>>())
+            }
+        } catch (e: Exception) {
+            Log.w("JavaScriptTranscoder", "rank error, title: $title, category: $category, page: $page, bookSource: $host", e)
+            return@javaScript PagingBooks.build(emptyList())
+        }
     }
 
 

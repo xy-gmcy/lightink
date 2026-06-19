@@ -185,9 +185,9 @@ class BookRankFragment : LifecycleFragment() {
 
     private fun onLoadMoreJs() {
         if (view?.mBookRankLoading == null) return
-        if (groupJs == null || categoryJs == null) return
+        if (groupJs == null) return
         view?.mBookRankLoading?.isVisible = true
-        controller.loadMoreJs(bookSource.js, page, groupJs!!.title.key, categoryJs!!.key)
+        controller.loadMoreJs(bookSource.js, page, groupJs!!.title.key, categoryJs?.key ?: "")
             .apply {
                 this.first.observe(viewLifecycleOwner, Observer { list ->
                     view?.mBookRankRecycler?.finishLoadMore(this.second)

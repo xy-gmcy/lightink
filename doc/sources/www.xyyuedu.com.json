@@ -1,0 +1,160 @@
+{
+  "name": "轩宇阅读网",
+  "url": "www.xyyuedu.com",
+  "version": 100,
+  "search": {
+    "url": "",
+    "charset": "gb2312",
+    "list": "div.mingzhu-main > ul > li",
+    "name": "a.text",
+    "cover": "a > img",
+    "detail": "a.text"
+  },
+  "detail": {
+    "name": "div.jianjie > h1@replace->/(^《)|(》阅读$)/->",
+    "author": "div.jianjie > p:nth-child(3)@match->(作者：).*",
+    "cover": "div.jianjie > img",
+    "summary": "div.jianjie > p:nth-child(4)",
+    "category": "div.jianjie > p > a"
+  },
+  "catalog": {
+    "list": "@js->function getCatalog(response, url) {\n    let html = Jsoup.parse(response, url)\n    let list = html.select(\"div.mingzhu-main > ul > li > a.text\")\n    if (list.length == 0) {\n        return html.select(\"ul.zhangjie2 > li\").map(chapter => ({\n            name: chapter.selectFirst(\"a\").text(),\n            url: chapter.selectFirst(\"a\").attr(\"href\")\n        }))\n    } else {\n        return list.flatMap(book => {\n            let link = book.absUrl(\"href\")\n            return [\n                { name: book.text() },\n                getCatalog(GET(link, { charset: 'gb2312'}), link)\n            ].flat()\n        })\n    }\n}\nlet lastResponse = responseCache.lastResponse\ngetCatalog(lastResponse.body, lastResponse.url)->end",
+    "name": "$.name",
+    "chapter": "$.url"
+  },
+  "chapter": {
+    "content": "div.jianjie > p:nth-child(4), div#onearcxsbd",
+    "purify": [],
+    "filter": [ "@div" ]
+  },
+  "rank": [
+    {
+      "title": "图书分类",
+      "page": 1,
+      "size": 20,
+      "url": "https://www.xyyuedu.com/${key}/index.html",
+      "categories": [
+        { "value": "中国古典文学", "key": "gdmz" }, { "value": "中国现代文学", "key": "xdmz" },
+        { "value": "外国文学名著", "key": "wgmz" }, { "value": "人物传记大全", "key": "rwzj" },
+        { "value": "世界名著英文", "key": "sjmzywb" }, { "value": "儿童读物大全", "key": "etdw" },
+        { "value": "励志书籍大全", "key": "lizhishuji" }, { "value": "侦探推理", "key": "zhentantuili" },
+        { "value": "武侠小说", "key": "wuxiaxiaoshuo" }, { "value": "故事书", "key": "gushishu" },
+        { "value": "健康养生书籍", "key": "jkyangsheng" }, { "value": "财经管理书籍", "key": "caijingguanli" },
+        { "value": "科普书籍", "key": "kepushuji" }, { "value": "科幻小说", "key": "kepushuji" }
+      ]
+    },
+    {
+      "title": "中国名著在线阅读，国内知名作家作品集",
+      "page": 1,
+      "size": 20,
+      "url": "https://www.xyyuedu.com/writer/${key}/index.html",
+      "categories": [
+        { "value": "莫言", "key": "moyan" }, { "value": "贾平凹", "key": "jiapingao" },
+        { "value": "三毛", "key": "sanmao" }, { "value": "法医秦明", "key": "fayiqinming" },
+        { "value": "王小波", "key": "wangxiaobo" }, { "value": "张爱玲", "key": "zhangailing" },
+        { "value": "韩寒", "key": "hanhan" }, { "value": "二月河", "key": "eryuehe" },
+        { "value": "路内", "key": "luna" }, { "value": "念一", "key": "nianyi" },
+        { "value": "张小娴", "key": "zhangxiaoxian" }, { "value": "鲁迅", "key": "luxun" },
+        { "value": "余秋雨", "key": "yuqiuyu" }, { "value": "御手洗熊猫", "key": "yushouxixiongmao" }
+      ]
+    },
+    {
+      "title": "武侠作家作品集",
+      "page": 1,
+      "size": 20,
+      "url": "https://www.xyyuedu.com/${key}/index.html",
+      "categories": [
+        { "value": "金庸小说全集", "key": "wuxiaxiaoshuo/jinyong" }, { "value": "古龙小说全集", "key": "wuxiaxiaoshuo/gulong" },
+        { "value": "梁羽生", "key": "writer/liangyusheng" }, { "value": "李凉", "key": "writer/liliang" },
+        { "value": "黄易", "key": "wuxiaxiaoshuo/huangyi" }, { "value": "温瑞安", "key": "wuxiaxiaoshuo/wenruian" },
+        { "value": "沧月", "key": "wuxiaxiaoshuo/cangyue" }, { "value": "还珠楼主", "key": "wuxiaxiaoshuo/huanzhulouzhu" },
+        { "value": "岳凡", "key": "wuxiaxiaoshuo/yuefan" }, { "value": "曹若冰", "key": "wuxiaxiaoshuo/caoruobing" },
+        { "value": "萧逸", "key": "wuxiaxiaoshuo/xiaoyi" }, { "value": "鬼谷子", "key": "wuxiaxiaoshuo/guiguzi" },
+        { "value": "司马翎", "key": "wuxiaxiaoshuo/simaling" }, { "value": "戊戟", "key": "wuxiaxiaoshuo/wuji" },
+        { "value": "柳残阳", "key": "wuxiaxiaoshuo/liucanyang" }, { "value": "诸葛青云", "key": "wuxiaxiaoshuo/zhugeqingyun" },
+        { "value": "南湘野叟", "key": "wuxiaxiaoshuo/nanxiangyesou" }, { "value": "刘建良", "key": "wuxiaxiaoshuo/liujianliang" },
+        { "value": "丹云", "key": "wuxiaxiaoshuo/danyun" }, { "value": "陈青云", "key": "wuxiaxiaoshuo/chenqingyun" },
+        { "value": "荻宜", "key": "wuxiaxiaoshuo/diyi" }, { "value": "东方英", "key": "wuxiaxiaoshuo/dongfangying" },
+        { "value": "丁剑霞", "key": "wuxiaxiaoshuo/dingjianxia" }, { "value": "公孙梦", "key": "wuxiaxiaoshuo/gongsunmeng" },
+        { "value": "墨余生", "key": "wuxiaxiaoshuo/moyusheng" }, { "value": "松柏生", "key": "wuxiaxiaoshuo/songbaisheng" },
+        { "value": "上官鼎", "key": "wuxiaxiaoshuo/shangguanding" }, { "value": "王度庐", "key": "wuxiaxiaoshuo/wangdulu" },
+        { "value": "于东楼", "key": "wuxiaxiaoshuo/yudonglou" }, { "value": "赵云龙", "key": "wuxiaxiaoshuo/zhaoyunlong" },
+        { "value": "高庸", "key": "wuxiaxiaoshuo/gaoyong" }, { "value": "凤歌", "key": "wuxiaxiaoshuo/fengge" },
+        { "value": "马荣成", "key": "wuxiaxiaoshuo/marongcheng" }, { "value": "平江不肖生", "key": "wuxiaxiaoshuo/pingjiangbuxiaosheng" },
+        { "value": "倪匡", "key": "wuxiaxiaoshuo/nikuang" }, { "value": "秦时明月之荆轲外传", "key": "wuxiaxiaoshuo/qinshimingyuezhijingkewaizhuan" },
+        { "value": "卧龙生", "key": "wuxiaxiaoshuo/wolongsheng" }, { "value": "墨武", "key": "wuxiaxiaoshuo/mowu" }
+      ]
+    },
+    {
+      "title": "推理作家作品集",
+      "page": 1,
+      "size": 20,
+      "url": "https://www.xyyuedu.com/${key}/index.html",
+      "categories": [
+        { "value": "中山七里", "key": "zhentantuili/zhongshanqili" }, { "value": "东川笃哉", "key": "zhentantuili/dongchuanduzai" },
+        { "value": "西村京太郎", "key": "zhentantuili/xicunjingtailang" }, { "value": "克里斯蒂娜·阿尔诺迪", "key": "zhentantuili/kelisidina_aernuodi" },
+        { "value": "乔治·西姆农", "key": "zhentantuili/qiaozhi_ximunong" }, { "value": "赤川次郎", "key": "zhentantuili/chichuancilang" },
+        { "value": "内田康夫", "key": "zhentantuili/neitiankangfu" }, { "value": "森村诚一", "key": "zhentantuili/sencunchengyi" },
+        { "value": "大谷羊太郎", "key": "zhentantuili/daguyangtailang" }, { "value": "夏树静子", "key": "zhentantuili/xiashujingzi" },
+        { "value": "天树征丸", "key": "zhentantuili/tianshuzhengwan" }, { "value": "谷崎润一郎", "key": "zhentantuili/guqirunyilang" },
+        { "value": "绫辻行人", "key": "zhentantuili/lings_xingren" }, { "value": "高罗佩", "key": "zhentantuili/gaoluopei" },
+        { "value": "金圣钟", "key": "zhentantuili/jinshengzhong" }, { "value": "马里奥·普佐", "key": "zhentantuili/maliao_puzuo" },
+        { "value": "E·S·加德纳", "key": "zhentantuili/E_S_jiadena" }, { "value": "石泽英太郎", "key": "zhentantuili/shizeyingtailang" },
+        { "value": "克里斯提昂·贾克", "key": "zhentantuili/kelisitiang_jiake" }, { "value": "松本清张", "key": "zhentantuili/songbenqingzhang" },
+        { "value": "杰克·希金斯", "key": "zhentantuili/jieke_xijinsi" }, { "value": "康奈尔·伍尔里奇", "key": "zhentantuili/kangnaier_wuerliqi" },
+        { "value": "横沟正史", "key": "zhentantuili/henggouzhengshi" }, { "value": "莉莎·克莱佩", "key": "zhentantuili/lisha_kelaipei" },
+        { "value": "山村美纱", "key": "zhentantuili/shancunmeisha" }, { "value": "雷蒙德·钱德勒", "key": "zhentantuili/leimengde_qiandelei" },
+        { "value": "伊坂幸太郎", "key": "zhentantuili/yibanxingtailang" }, { "value": "海伦·麦克洛伊", "key": "zhentantuili/hailun_maikeluoyi" },
+        { "value": "黛博拉·克龙比", "key": "zhentantuili/daibola_kelongbi" }, { "value": "玛格丽特·杜鲁门", "key": "zhentantuili/magelite_dulumen" },
+        { "value": "吉列尔莫·马丁内斯", "key": "zhentantuili/jlemmdns" }, { "value": "长冈弘树", "key": "zhentantuili/zhangganghongshu" },
+        { "value": "贵志佑介", "key": "zhentantuili/guizhiyoujie" }, { "value": "玛丽·海金斯·克拉克", "key": "zhentantuili/mlhjsklk" }
+      ]
+    },
+    {
+      "title": "国外作家作品集",
+      "page": 1,
+      "size": 20,
+      "url": "https://www.xyyuedu.com/${key}/index.html",
+      "categories": [
+        { "value": "米兰·昆德拉", "key": "wgmz/milankundela" }, { "value": "屠格涅夫", "key": "guowaizuojia/tugeniefu" },
+        { "value": "查尔斯·狄更斯", "key": "guowaizuojia/chaersi_digengsi" }, { "value": "内尔森·德米勒", "key": "guowaizuojia/naersen_demile" },
+        { "value": "阿尔弗里·缪塞", "key": "guowaizuojia/aerfuli_miaosai" }, { "value": "儒勒·凡尔纳", "key": "guowaizuojia/rulei_fanerna" },
+        { "value": "莫泊桑", "key": "guowaizuojia/moposang" }, { "value": "杰克·伦敦", "key": "guowaizuojia/jieke_lundun" },
+        { "value": "马克·吐温", "key": "guowaizuojia/make_tuwen" }, { "value": "伊迪丝·华顿", "key": "guowaizuojia/yidisi_huadun" },
+        { "value": "村上春树", "key": "wgmz/cunshangchunshu" }, { "value": "巴尔扎克", "key": "bazhake" },
+        { "value": "约翰·勒卡雷", "key": "guowaizuojia/yuehan_lekalei" }, { "value": "肯·福莱特", "key": "guowaizuojia/ken_fulaite" },
+        { "value": "吉本芭娜娜", "key": "guowaizuojia/jibenbanana" }, { "value": "马塞尔·普鲁斯特", "key": "guowaizuojia/mseplste" },
+        { "value": "东野圭吾", "key": "wgmz/dongyeguiwu" }, { "value": "朱川湊人", "key": "guowaizuojia/zhuchuan_ren" },
+        { "value": "渡边淳一", "key": "wgmz/dubianchunyi" }, { "value": "叔本华", "key": "wgmz/shubenhuazp" },
+        { "value": "J.K.罗琳", "key": "jkluolin" }, { "value": "卡尔·麦", "key": "wgmz/kaermai" },
+        { "value": "林肯·奇尔德", "key": "guowaizuojia/linken_qierde" }, { "value": "西村寿行", "key": "xicunshouxing" },
+        { "value": "马洛伊·山多尔", "key": "wgmz/mlysde" }, { "value": "季尔·布雷乔夫", "key": "guowaizuojia/jier_buleiqiaofu" },
+        { "value": "司马辽太郎", "key": "guowaizuojia/simaliaotailang" }, { "value": "纪伯伦", "key": "writer/jibolun" },
+        { "value": "莎士比亚", "key": "writer/shashibiya" }, { "value": "史蒂芬·金", "key": "writer/shidifen_jin" },
+        { "value": "贝尔纳·韦尔贝尔", "key": "wgmz/beiernawebe" }, { "value": "斯蒂芬妮·梅尔", "key": "writer/sidifenni_meier" },
+        { "value": "奥尔罕·帕慕克", "key": "wgmz/aoerhan_pamuke" }, { "value": "阿瑟·克拉克", "key": "wgmz/ase_kelake" },
+        { "value": "托尔金作品集", "key": "wgmz/tuoerjinzuopinji" }, { "value": "维克多·雨果", "key": "wgmz/weikeduo_yuguo" },
+        { "value": "肖洛霍夫", "key": "wgmz/xiaoluohuofu" }, { "value": "埃里奇·西格尔", "key": "wgmz/ailiqi_xigeer" },
+        { "value": "安伯托·艾柯", "key": "writer/anbutaik" }, { "value": "苏珊·柯林斯", "key": "wgmz/sushan_kelinsi" },
+        { "value": "大薮春彦", "key": "wgmz/dacouchunyan" }, { "value": "弗兰克·赫伯", "key": "wgmz/fulankehebo" },
+        { "value": "罗伯特·海因莱", "key": "wgmz/lbthyl" }, { "value": "田中芳树", "key": "wgmz/tianzhongfangshu" },
+        { "value": "卡勒德·胡赛尼", "key": "wgmz/kaletehusaini" }, { "value": "克利弗·S·刘易斯", "key": "wgmz/kelifoslys" },
+        { "value": "德鲁·卡宾森", "key": "wgmz/delukabinsen" }, { "value": "茱德·狄弗洛", "key": "wgmz/zddifolo" },
+        { "value": "埃莱娜·费兰特", "key": "guowaizuojia/ailaina_feilante" }, { "value": "萨拉·斯姆卡", "key": "guowaizuojia/sala_simuka" },
+        { "value": "詹姆斯·凯恩", "key": "guowaizuojia/zhanmusi_kaien" }, { "value": "弗诺·文奇", "key": "guowaizuojia/funuo_wenqi" }
+      ]
+    },
+    {
+      "title": "友情链接",
+      "page": 1,
+      "size": 20,
+      "url": "https://www.xyyuedu.com/${key}/",
+      "categories": [
+        { "value": "古代兵书大全", "key": "gdmz/bingshudaquan" }, { "value": "唐诗大全", "key": "gdmz/tangshidaquan" },
+        { "value": "中国史书大全", "key": "shishudianji" }, { "value": "古代医书", "key": "gudaiyishu" },
+        { "value": "人物传记大全", "key": "rwzj" }, { "value": "励志书籍大全", "key": "lizhishuji" },
+        { "value": "儿童文学大全", "key": "etdw" }, { "value": "道教书籍", "key": "daojiaoshuji" }
+      ]
+    }
+  ]
+}

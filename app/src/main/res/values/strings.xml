@@ -314,5 +314,8 @@
     <string name="search_storage_hint">搜索文件名</string>
     <string name="default_storage_path">设为默认目录</string>
     <string name="local_booksource_import">本地导入</string>
+    <string name="hidden_files">显示隐藏文件和目录</string>
+    <string name="enable_preload">强制预加载</string>
+    <string name="setting_preload_help">启用后会在章节加载失败时继续向后加载，直到遇到能成功加载的章节</string>
 
 </resources>

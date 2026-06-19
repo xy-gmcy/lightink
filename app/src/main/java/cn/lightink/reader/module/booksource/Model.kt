@@ -10,8 +10,26 @@ import cn.lightink.reader.transcode.entity.Tag
 
 data class BookSourceJson(val name: String, val url: String, val version: Int, val search: Search, val detail: Detail = Detail(), val catalog: Catalog = Catalog(), val chapter: Chapter = Chapter(), val auth: Auth? = null, val rank: List<Rank> = emptyList()) {
 
-    data class Search(val url: String = EMPTY, val charset: String = "UTF-8", val list: String = EMPTY, val name: String = EMPTY, val author: String = EMPTY, val cover: String = EMPTY, val summary: String = EMPTY, val detail: String = EMPTY,
-                      val category: String = "", val status: String = "", val words: String = "", val tags: Tag? = null, val update: String = "", val lastChapter: String = "",val filter: String = "", val other: String = "")
+    data class Search(
+        val url: String = EMPTY,
+        val charset: String = "UTF-8",
+        val list: String = EMPTY,
+        val name: String = EMPTY,
+        val author: String = EMPTY,
+        val cover: String = EMPTY,
+        val summary: String = EMPTY,
+        val detail: String = EMPTY,
+        val category: String = "",
+        val status: String = "",
+        val words: String = "",
+        val tags: Tag? = null,
+        val update: String = "",
+        val lastChapter: String = "",
+        val filter: String = "",
+        val other: String = "",
+        val page: Int = -1,
+        val unit: Int = 1
+    )
 
     data class Detail(val name: String = EMPTY, val author: String = EMPTY, val cover: String = EMPTY, val words: String = "", val category: String = "", val tags: Tag? = null, val other: String = "", val summary: String = EMPTY, val status: String = EMPTY, val update: String = EMPTY, val lastChapter: String = EMPTY, val catalog: String = EMPTY)
 
@@ -90,7 +108,7 @@ data class Query(val query: String, var match: String? = null, var euqal: String
 data class Query(val query: String, val operators: List<Pair<String, String>> = emptyList()) {
     companion object {
         fun build(expression: String): Query {
-            val matches = Regex("@(js|match|equal|equalNot|replace|decrypt)->").findAll(expression).toList()
+            val matches = Regex("@(js|match|equal|equalNot|replace|decrypt|url)->").findAll(expression).toList()
             if (matches.isEmpty()) return Query(expression)
             return Query(expression.substring(0, matches.first().range.first),
                 matches.mapIndexed { index, match ->
@@ -106,21 +124,27 @@ data class Query(val query: String, val operators: List<Pair<String, String>> = 
 }
 
 data class ResponseCache(
-    var search: MutableList<Any> = mutableListOf(),
-    var detail: Any = "",
-    val catalog: MutableList<Any> = mutableListOf(),
-    val booklet: MutableList<Any> = mutableListOf(),
-    var chapter: Any = "",
-    val rank: MutableList<Any> = mutableListOf()
+    var search: MutableList<BookSourceResponse> = mutableListOf(),
+    var detail: BookSourceResponse = BookSourceResponse("", ""),
+    val catalog: MutableList<BookSourceResponse> = mutableListOf(),
+    val booklet: MutableList<BookSourceResponse> = mutableListOf(),
+    var chapter: BookSourceResponse = BookSourceResponse("", ""),
+    val rank: MutableList<BookSourceResponse> = mutableListOf(),
 ) {
+    var step: String = ""
+    var lastResponse: BookSourceResponse = BookSourceResponse("", "")
     fun put(key: String, value: BookSourceResponse) {
+        step = key
+        lastResponse = value
         when (key) {
-            "search" -> search.add(value.body)
-            "detail" -> detail = value.body
-            "catalog" -> catalog.add(value.body)
-            "booklet" -> booklet.add(value.body)
-            "chapter" -> chapter = value.body
-            "rank" -> rank.add(value.body)
+            "search" -> search.add(value)
+            "detail" -> detail = value
+            "catalog" -> catalog.add(value)
+            "booklet" -> booklet.add(value)
+            "chapter" -> chapter = value
+            "rank" -> rank.add(value)
         }
     }
+    fun step() = step
+    fun lastResponse() = lastResponse
 }

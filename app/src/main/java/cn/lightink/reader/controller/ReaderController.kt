@@ -14,6 +14,7 @@ import android.util.Size
 import android.util.SparseIntArray
 import android.util.TypedValue
 import android.view.ViewConfiguration
+import android.webkit.URLUtil
 import androidx.core.util.getOrDefault
 import androidx.lifecycle.*
 import androidx.viewpager2.widget.ViewPager2
@@ -38,6 +39,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 import cn.lightink.reader.R
+import cn.lightink.reader.transcode.NetworkBridge
 
 class ReaderController : ViewModel(), LifecycleObserver {
 
@@ -359,6 +361,7 @@ class ReaderController : ViewModel(), LifecycleObserver {
                 else -> convert(chapter, markdown, 0, next)
             }
         }
+        needPreload = needPreload && Preferences.get(Preferences.Key.ENABLE_PRELOAD, false)
         if (needPreload && preload) analyze(index + 1, next, preload)
     }
 
@@ -475,9 +478,23 @@ class ReaderController : ViewModel(), LifecycleObserver {
             }
             val url = it.value.regex(REGEX_IMAGE_VALUE)
             if (url.isNotBlank()) {
-                val image = File(book.path, "$MP_FOLDER_IMAGES/$url")
+                val image = File(book.path, "$MP_FOLDER_IMAGES/${(url.md5())}")
                 if (image.exists()) {
                     cells.add(convertImageCell(it.value.regex(REGEX_IMAGE_ALT), image.absolutePath, it.value.length))
+                } else {
+                    var byteArray = NetworkBridge.get(url)
+                    if (byteArray == null && URLUtil.isHttpsUrl(url)) {
+                        byteArray = NetworkBridge.get(url.replace("https://", "http://"))
+                    }
+                    if (byteArray != null){
+                        image.apply {
+                            parentFile?.mkdirs()
+                            createNewFile()
+                            writeBytes(byteArray)
+                        }
+                        val alt = it.value.regex(REGEX_IMAGE_ALT)
+                        cells.add(convertImageCell(alt, image.absolutePath, it.value.length))
+                    } else return@forEach
                 }
             }
             start = it.range.last + 1

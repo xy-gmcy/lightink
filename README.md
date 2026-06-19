@@ -1,15 +1,12 @@
-# 轻墨
-### 基于厚墨v1.3复刻
-### 项目基于kotlin/协程/mvvm开发, 页面模仿自厚墨, 纯属共享学习kotlin/android开发之用. 
-### 该软件所产生的文档/资源等请勿传播，请勿用于学习外的其他用途
+本项目源自[lingtink](https://github.com/wizos/lightink)，增加了文件浏览与导入并增强了书源能力，仅供学习使用。
 
-----
+文档与书源示例见[doc/doc.md](doc/doc.md)，我的好示例仅供参考，通过书源获取到的书籍及信息均可通过浏览器访问或书源记录的操作获得，应用本身不对内容、质量、版权等作任何检测.
 
-#### 应用简介
+请勿使用不明网站或作者的源，以免造成侵权或个人信息泄露等问题，应用本身不对源内容作安全性检测，该项目及原项目不承担任何责任。
 
-极简设计，纯粹阅读。支持网络在线阅读，拥有优秀的阅读体验。
+本人未经过任何专业的应用开发学习，功能开发仅为自我学习与尝试，不对代码质量作任何保证，同时应用未经足够测试，可能存在各种问题，请谨慎使用。
 
-
-#### 特此声明
-
-本软件仅为开源学习之用, 界面模仿自厚墨v1.3, 与厚墨原版无关
+致谢
+- 原项目：[lingtink](https://github.com/wizos/lightink)
+- JS能力：[quickjs-android](https://github.com/seven332/quickjs-android)
+- azw3/mobi解包：[KindleUnpack](https://github.com/kevinhendricks/KindleUnpack)

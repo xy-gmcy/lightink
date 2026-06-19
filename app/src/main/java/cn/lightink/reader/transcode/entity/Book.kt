@@ -97,8 +97,13 @@ data class Extra(val name: String, val type: String, val method: String, val tim
  * 图书分页
  */
 @Serializable
-data class PagingBooks(val books: List<SearchResult> = listOf(), val end: Boolean = true)
-
+data class PagingBooks(val books: List<SearchResult> = listOf(), val end: Boolean) {
+    companion object {
+        fun build(books: List<SearchResult>): PagingBooks {
+            return PagingBooks(books, books.isEmpty())
+        }
+    }
+}
 /**
  * 排行榜
  * @property title 标题

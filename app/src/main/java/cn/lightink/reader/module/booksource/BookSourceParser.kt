@@ -34,8 +34,10 @@ import org.jsoup.nodes.Node
 import org.jsoup.nodes.TextNode
 import org.jsoup.select.Elements
 import org.jsoup.select.Selector
+import org.mozilla.javascript.JavaScriptException
 import java.io.File
 import java.io.FileNotFoundException
+import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.regex.PatternSyntaxException
@@ -51,6 +53,7 @@ class BookSourceParser(val bookSource: BookSource) {
     /**
      * 搜索
      */
+    /*
     fun search(key: String): List<SearchMetadata> {
         if (bookSource.type == "js") {
             return bookSource.js.search(key)?.map { t ->
@@ -68,6 +71,40 @@ class BookSourceParser(val bookSource: BookSource) {
             return results.filter { it.filter ?: (it.name.contains(key, true) || it.author.contains(key, true)) }
         }
         return emptyList()
+    }
+    */
+    fun search(key: String): List<SearchMetadata> {
+        val result = mutableListOf<SearchMetadata>()
+        if (bookSource.type == "js") {
+            var page = 1
+            while (true) {
+                val paging = bookSource.js.search(key, page)
+                result.addAll(paging.books.map { t ->
+                    SearchMetadata(t.name, t.author, t.cover, t.summary, t.detail, t.category, t.status, t.words, t.tags, t.update, t.lastChapter, t.filter, t.other)
+                })
+                if (paging.end) return result
+                page++
+            }
+        } else {
+            var page = bookSource.json.search.page
+            while (true) {
+                val url = bookSource.json.search.url
+                    .replace("\${key}", key.encode(bookSource.json.search.charset))
+                    .apply { if (page > -1) replace("\${page}", page.toString()) }
+                val response = BookSourceInterpreter.execute(url, bookSource.json.auth) ?: return result
+                responseCache.put("search", response)
+                val books = findList(response, bookSource.json.search.list).map { findSearchMetadata(it) }
+                if (books.isEmpty()) {
+                    if (page == bookSource.json.search.page) {
+                        val metadata = findDetailMetadata(response.url, response)
+                        return if (metadata.name.contains(key, true) || metadata.author.contains(key, true)) listOf(metadata.toSearchMetadata()) else emptyList()
+                    }
+                    return result
+                }
+                result.addAll(books.filter { it.filter ?: (it.name.contains(key, true) || it.author.contains(key, true)) })
+                page += bookSource.json.search.unit
+            }
+        }
     }
 
     /**
@@ -206,7 +243,9 @@ class BookSourceParser(val bookSource: BookSource) {
             getChapters { action(it) }
         } else {
             //不存在分卷
-            list.forEach { item -> findChapter(item, false, chapters) }
+            list
+                .let { if (orderBy !in 1..2) it.asReversed() else it }
+                .forEach { item -> findChapter(item, false, chapters) }
         }
         return chapters
     }
@@ -225,7 +264,7 @@ class BookSourceParser(val bookSource: BookSource) {
         if (name.isNotBlank()) {
             val chapter = Chapter(name, findValue(response, bookSource.json.catalog.chapter, true), useLevel, date, words)
             //章节链接必不为空且不能存在重复章节
-            if (chapter.url.isNotBlank() && !chapters.contains(chapter)) {
+            if (!chapters.contains(chapter)) {
                 chapters.add(0, chapter)
             }
         }
@@ -277,7 +316,7 @@ class BookSourceParser(val bookSource: BookSource) {
             if (bookSource.json.chapter.page.isNotBlank() && content.isNotBlank()) {
                 val page = findValue(response, bookSource.json.chapter.page, true)
                 if (URLUtil.isNetworkUrl(page) && page != response.url && page != url) {
-                    return findContent("",page, output, buffer)
+                    return findContent(title, page, output, buffer)
                 }
             }
             //检查净化列表
@@ -346,6 +385,7 @@ class BookSourceParser(val bookSource: BookSource) {
     /**
      * 搜索封面
      */
+    /*
     fun searchCover(bookName: String): String {
         if (bookSource.type == "js") {
             try {
@@ -363,6 +403,46 @@ class BookSourceParser(val bookSource: BookSource) {
                 return if (metadata.name == bookName) metadata.cover else EMPTY
             }
             return result.firstOrNull { it.name == bookName }?.cover ?: EMPTY
+        }
+        return EMPTY;
+    }
+    */
+    fun searchCover(bookName: String): String {
+        if (bookSource.type == "js") {
+            try {
+                var page = 1
+                while (true) {
+                    val paging = bookSource.js.search(bookName, page)
+                    val book = paging.books.firstOrNull { it.name == bookName }
+                    if (book != null) return book.cover
+                    if (paging.end) return ""
+                    page++
+                }
+            } catch (e: Exception) {
+                Log.w("BookSourceParser", "searchCover error, bookName: $bookName, bookSource: ${bookSource.url}", e)
+            }
+        } else {
+            var page = bookSource.json.search.page
+            while (true) {
+                val url = bookSource.json.search.url
+                    .replace("\${key}", bookName.encode(bookSource.json.search.charset))
+                    .apply { if (page > -1) replace("\${page}", page.toString()) }
+                val response = BookSourceInterpreter.execute(url, bookSource.json.auth) ?: return ""
+                responseCache.put("search", response)
+                val books = findList(response, bookSource.json.search.list).map { findSearchMetadata(it) }
+                if (books.isEmpty()) {
+                    if (page == bookSource.json.search.page) {
+                        val metadata = findDetailMetadata(response.url, response)
+                        return if (metadata.name == bookName) metadata.cover else ""
+                    }
+                    return ""
+                }
+                val book = books.firstOrNull { it.name == bookName }
+                if (book != null) {
+                    return book.cover
+                }
+                page += bookSource.json.search.unit
+            }
         }
         return EMPTY;
     }
@@ -718,14 +798,14 @@ class BookSourceParser(val bookSource: BookSource) {
         var expression = query
         var isString = isExpression.not()
         while (true) {
-            val scripts = Regex("""@js->.*?->end""").findAll(expression).toList()
+            val scripts = Regex("""(?s)@js->.*?->end""").findAll(expression).toList()
             scripts.forEach { script ->
                 val key = "script#${scriptList.size}"
                 val value = script.value.removeSurrounding("@js->", "->end")
                 expression = expression.replaceFirst(script.value, "@js->$key")
                 scriptList[key] = value
             }
-            val matches = Regex("""\$\{(?:\$[^{]|[^$]\{|[^{$])*?(?:[^\\]|\\\\)?\}""")
+            val matches = Regex("""(?s)\$\{(?:\$[^{]|[^$]\{|[^{$])*?(?:[^\\]|\\\\)?\}""")
                 .findAll(expression).toList()
             if (matches.isEmpty()) break
             matches.forEach { match ->
@@ -808,69 +888,100 @@ class BookSourceParser(val bookSource: BookSource) {
      */
     private fun findValueByQuery(input: Any, url: String, query: Query, isHref: Boolean, filters: List<String> = emptyList(), output: String = ""): String {
         var value = input
-        Log.d("findValueByQuery", "input: $input")
-        Log.d("findValueByQuery", "query: $query")
-        return javaScript { context ->
-            var temp: JSValue? = null
-            query.operators.forEachIndexed { index, operator ->
-                when (operator.first) {
-                    "js" -> {
+        var error: Exception? = null
+        fun action(operator: Pair<String, String>) {
+            if (value !is String) value = value.toString()
+            when (operator.first) {
+                "match" -> {
+                    try {
+                        value = Regex(operator.second).find(value as String)?.value ?: ""
+                    } catch (e: PatternSyntaxException) { error = e }
+                }
+                "equal" -> value = (value == operator.second).toString()
+                "equalNot" -> value = (value != operator.second).toString()
+                "replace" -> {
+                    val list = operator.second.split("->")
+                    if (list.first().let { it.startsWith("/") && it.endsWith("/") }) {
+                        try {
+                            val regex = list.first().removeSurrounding("/").toRegex()
+                            value = (value as String).replace(regex, list.last())
+                        } catch (e: PatternSyntaxException) { error = e }
+                    } else {
+                        value = (value as String).replace(list.first(), list.last())
+                    }
+                }
+                "decrypt" -> {
+                    when (operator.second.lowercase()) {
+                        "base64" -> value = String(Base64.decode(value as String, Base64.DEFAULT))
+                    }
+                }
+                "url" -> {
+                    val queryOperator = Regex("""@(?:attr->|text|wholeText|ownText|data|textNodes|href|html|outerHtml)""")
+                        .find(operator.second)?.value ?: ""
+                    val expression = operator.second.apply {
+                        if (queryOperator != "") substringBefore(queryOperator)
+                    }
+                    val url = expression.substringBeforeLast("->")
+                    val cssQuery = expression.substringAfterLast("->")
+                    val response = BookSourceInterpreter.execute(url, bookSource.json.auth)
+                    if (response == null) {
+                        error = IOException("Failed to fetch URL: $url")
+                        return
+                    }
+                    responseCache.put(responseCache.step(), response)
+                    value = findValue(response, cssQuery + queryOperator)
+                }
+            }
+        }
+        if (query.operators.none { it.first == "js" }) {
+            query.operators.forEach { operator ->
+                action(operator)
+                error?.let { return it.message ?: "" }
+            }
+        } else {
+            value = javaScript { context ->
+                var temp: JSValue? = null
+                query.operators.forEachIndexed { index, operator ->
+                    if (operator.first == "js") {
                         val script = scriptList[operator.second] ?: return@forEachIndexed
-                        Log.d("findValueByQuery", "script: $script")
                         context.globalObject.setProperty("$", temp ?: context.createJSValueFrom(value))
-                        temp = context.evaluate(script, bookSource.url, JSValue::class.java)
-                            ?: return@forEachIndexed
-                        Log.d("findValueByQuery", "temp: ${context.string(temp as JSValue)}")
+                        try {
+                            temp = context.evaluate(script, bookSource.url, JSValue::class.java)
+                                ?: return@forEachIndexed
+                        } catch (e: JavaScriptException) {
+                            error = e
+                            return@javaScript ""
+                        }
                         if (index == query.operators.lastIndex || query.operators[index+1].first != "js") {
                             value =
                                 try { (temp as JSString).string }
                                 catch (e: Exception) { context.string(temp as JSValue) }
                             temp = null
                         }
-                    }
-                    "match" -> {
-                        try {
-                            value = Regex(operator.second).find(value as String)?.value ?: ""
-                        } catch (e: PatternSyntaxException) {}
-                    }
-                    "equal" -> value = (value == operator.second).toString()
-                    "equalNot" -> value = (value != operator.second).toString()
-                    "replace" -> {
-                        val list = operator.second.split("->")
-                        if (list.first().let { it.startsWith("/") && it.endsWith("/") }) {
-                            try {
-                                val regex = list.first().removeSurrounding("/").toRegex()
-                                value = (value as String).replace(regex, list.last())
-                            } catch (e: PatternSyntaxException) {}
-                        } else {
-                            value = (value as String).replace(list.first(), list.last())
-                        }
-                    }
-                    "decrypt" -> {
-                        when (operator.second.lowercase()) {
-                            "base64" -> value = String(Base64.decode(value as String, Base64.DEFAULT))
-                        }
-                    }
+                    } else { action(operator) }
+                    if (error != null) return@javaScript ""
                 }
-            }
-            value = when {
-                temp == null && value is Element -> {
-                    filters.forEach { if (it.isNotBlank()) (value as Element).select(it).remove()}
-                    fromHtml(value as Element, url, output)
-                }
-                temp == null && value is String -> (value as String)
-                temp != null -> try {
-                    ((temp as JSObject).getProperty("JsoupObject")
-                        .cast(JSObject::class.java).javaObject as Element).apply {
+                return@javaScript temp?.let {
+                    try {
+                        ((temp as JSObject).getProperty("JsoupObject")
+                            .cast(JSObject::class.java).javaObject as Element).apply {
                             filters.forEach { select(it).remove() }
                         }.let { fromHtml(it, url, output) }
-                } catch (e: Exception) { context.string(temp as JSValue) }
-                else -> return@javaScript ""
+                    } catch (e: Exception) { context.string(temp as JSValue) }
+                } ?: value
             }
-            if (isHref) value = (value as String).autoUrl(url)
-            Log.d("findValueByQuery", "result: $value")
-            return@javaScript value as String
         }
+        error?.let { return it.message ?: "" }
+        value = when (value) {
+            is String -> (value as String).trim()
+            is Element -> {
+                filters.forEach { if (it.isNotBlank()) (value as Element).select(it).remove()}
+                fromHtml(value as Element, url, output)
+            }
+            else -> value.toString()
+        }
+        if (isHref) value = (value as String).autoUrl(url)
+        return value as String
     }
 
     /**
@@ -878,7 +989,7 @@ class BookSourceParser(val bookSource: BookSource) {
      */
     private fun findList(response: BookSourceResponse, query: String): List<BookSourceResponse> {
         try {
-            val matches = Regex("""@js->.*?->end""").findAll(query).toList()
+            val matches = Regex("""(?s)@js->.*?->end""").findAll(query).toList()
             if (matches.isNotEmpty()) {
                 val expression = query.substringBefore(matches.first().value)
                 val list = when (response.body) {
@@ -887,17 +998,15 @@ class BookSourceParser(val bookSource: BookSource) {
                         object : TypeRef<List<JsonObject>>() {}).map { it.toJson() }
                     else -> return emptyList()
                 }
-                Log.d("findList", "list: $list")
-                Log.d("findList", "expression: $expression")
                 return javaScript { context ->
                     var temp: JSValue? = null
                     matches.forEach { match ->
                         val script = match.value.removeSurrounding("@js->", "->end")
-                        Log.d("findList", "script: $script")
                         context.globalObject.setProperty("$", temp ?: context.createJSValueFrom(list))
-                        temp = context.evaluate(script, bookSource.url, JSValue::class.java)
-                            ?: return@forEach
-                        Log.d("findList", "temp: ${context.string(temp as JSValue)}")
+                        try {
+                            temp = context.evaluate(script, bookSource.url, JSValue::class.java)
+                                ?: return@forEach
+                        } catch (e: JavaScriptException) { return@javaScript listOf("""{ error: "${e.message}" }""") }
                     }
                     return@javaScript (temp?.cast(JSArray::class.java)
                         ?: return@javaScript list).let { array ->
@@ -929,10 +1038,7 @@ class BookSourceParser(val bookSource: BookSource) {
                                  }
                              }
                         }
-                }.map {
-                    Log.d("findList", "result: $it")
-                    BookSourceResponse(response.url, it) }
-            }
+                }.map { BookSourceResponse(response.url, it) } }
             return when (response.body) {
                 is Document -> queryList(response.body, query)
                     .map { BookSourceResponse(response.url, it) }
@@ -959,14 +1065,14 @@ class BookSourceParser(val bookSource: BookSource) {
             var expression = query
             var isString = false
             while (true) {
-                val scripts = Regex("""@js->.*?->end""").findAll(expression).toList()
+                val scripts = Regex("""(?s)@js->.*?->end""").findAll(expression).toList()
                 scripts.forEach { script ->
                     val key = "script#${scriptList.size}"
                     val value = script.value.removeSurrounding("@js->", "->end")
                     expression = expression.replaceFirst(script.value, "@js->$key")
                     scriptList[key] = value
                 }
-                val matches = Regex("""\$\{(?:\$[^{]|[^$]\{|[^{$])*?(?:[^\\]|\\\\)?\}""")
+                val matches = Regex("""(?s)\$\{(?:\$[^{]|[^$]\{|[^{$])*?(?:[^\\]|\\\\)?\}""")
                     .findAll(expression).toList()
                 if (matches.isEmpty()) break
                 matches.forEach { match ->
@@ -988,16 +1094,31 @@ class BookSourceParser(val bookSource: BookSource) {
     }
 
     private fun <T> javaScript(callback: (JSContext) -> T): T {
+        fun JSContext.createResponse(response: BookSourceResponse): JSObject {
+            return this.createJSObject().apply {
+                setProperty("url", createJSString(response.url))
+                setProperty("body", createJSString(response.body.toString()))
+            }
+        }
         QuickJS.Builder().build().createJSRuntime().use { runtime ->
             runtime.createJSContext().use { context ->
                 NetworkBridge.inject(context, bookSource.url, "")
-                context.globalObject.setProperty("response", context.createJSObject().apply {
-                        setProperty("search", context.createJSValueFrom(responseCache.search))
-                        setProperty("detail", context.createJSValueFrom(responseCache.detail))
-                        setProperty("catalog", context.createJSValueFrom(responseCache.catalog))
-                        setProperty("booklet", context.createJSValueFrom(responseCache.booklet))
-                        setProperty("chapter", context.createJSValueFrom(responseCache.chapter))
-                        setProperty("rank", context.createJSValueFrom(responseCache.rank))
+                context.globalObject.setProperty("responseCache", context.createJSObject().apply {
+                        setProperty("search", context.createJSValueFrom(responseCache.search) {
+                            context.createResponse(it as BookSourceResponse)
+                        })
+                        setProperty("detail", context.createResponse(responseCache.detail))
+                        setProperty("catalog", context.createJSValueFrom(responseCache.catalog) {
+                            context.createResponse(it as BookSourceResponse)
+                        })
+                        setProperty("booklet", context.createJSValueFrom(responseCache.booklet) {
+                            context.createResponse(it as BookSourceResponse)
+                        })
+                        setProperty("chapter", context.createResponse(responseCache.chapter))
+                        setProperty("rank", context.createJSValueFrom(responseCache.rank) {
+                            context.createResponse(it as BookSourceResponse)
+                        })
+                        setProperty("lastResponse", context.createResponse(responseCache.lastResponse))
                     }
                 )
                 return callback(context)

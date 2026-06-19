@@ -112,6 +112,56 @@
                     android:layout_marginBottom="@dimen/margin_vertical"
                     android:background="@color/colorStroke" />
 
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/selected_background"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/selected_background"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            style="@style/Lightink.Item"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/enable_preload" />
+
+                        <com.kyleduo.switchbutton.SwitchButton
+                            android:id="@+id/mSettingEnablePreload"
+                            style="@style/Ink.Switch"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center_vertical"
+                            android:layout_marginEnd="@dimen/margin" />
+                    </LinearLayout>
+
+                    <cn.lightink.reader.widget.JustifyTextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/margin_horizontal"
+                        android:layout_marginEnd="@dimen/margin_horizontal"
+                        android:layout_marginBottom="@dimen/margin_vertical"
+                        android:gravity="center_vertical"
+                        android:lineSpacingMultiplier="1.2"
+                        android:text="@string/setting_preload_help"
+                        android:textColor="@color/colorContent"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/dimenStroke"
+                    android:layout_marginStart="@dimen/margin"
+                    android:layout_marginTop="@dimen/margin_vertical"
+                    android:layout_marginEnd="@dimen/margin"
+                    android:layout_marginBottom="@dimen/margin_vertical"
+                    android:background="@color/colorStroke" />
+
 
                 <LinearLayout
                     android:layout_width="match_parent"

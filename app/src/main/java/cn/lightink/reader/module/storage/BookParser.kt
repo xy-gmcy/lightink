@@ -1,6 +1,8 @@
 package cn.lightink.reader.module.storage
 
 import android.content.Context
+import cn.lightink.reader.ktx.href
+import cn.lightink.reader.ktx.md5
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 import cn.lightink.reader.model.MPMetadata
@@ -49,25 +51,52 @@ class BookParser(file: File, val context: Context) {
         )
         val spine = opf.select("spine > itemref")
             .map { getPath(opfPath!!,manifest[it.attr("idref")]!!) }
+            .map{ it.split("#")[0] }
 
-        val tocId = opf.selectFirst("spine")?.attr("toc")
-        val tocPath = getPath(opfPath!!, manifest[tocId]!!)
-        val navMap = getDocument(tocPath).selectFirst("navMap")
-        val toc = getToc(navMap!!).mapIndexed { index, pair ->
-            val node = pair.first
-            val src = node.selectFirst("> content")
-                ?.attr("src")?.split("#")
-            EPUBChapter(
-                index,
-                node.selectFirst("> navLabel > text")!!.text().trim(),
-                pair.second,
-                spine.indexOf(getPath(tocPath, src?.first()!!)),
-                if (src.size == 2)src.last() else null
-            )
-        }.sortedBy { it.spineIndex }
+        val tocId = opf.selectFirst("spine")?.attr("toc")?.ifBlank{
+            opf.selectFirst("manifest > item[media-type=application/x-dtbncx+xml]")
+                ?.attr("id")
+        }
+        val toc =
+            if (!tocId.isNullOrBlank()) {
+                val tocPath = getPath(opfPath!!, manifest[tocId]!!)
+                val navMap = getDocument(tocPath).selectFirst("navMap")
+                getToc(navMap!!, "> navPoint").mapIndexed { index, pair ->
+                    val node = pair.first
+                    val src = node.selectFirst("> content")
+                        ?.attr("src")?.split("#")
+                    EPUBChapter(
+                        index,
+                        node.selectFirst("> navLabel > text")!!.text().trim(),
+                        pair.second,
+                        spine.indexOf(getPath(tocPath, src?.first()!!)),
+                        if (src.size == 2)src.last() else null
+                    )
+                }.sortedBy { it.spineIndex }
+            } else {
+                val  href = manifest["nav_xhtml_id"]
+                    ?: opf.selectFirst("manifest > item[property=nav]")
+                        ?.attr("href")
+                if (!href.isNullOrBlank()) {
+                    val tocPath = getPath(opfPath!!, href)
+                    val nav = getDocument(tocPath).selectFirst("nav")
+                    getToc(nav!!, "> ol > li").mapIndexed { index, pair ->
+                        val node = pair.first
+                        val src = node.selectFirst("> a")
+                            ?.attr("href")?.split("#")
+                        EPUBChapter(
+                            index,
+                            node.selectFirst("> a")!!.text().trim(),
+                            pair.second,
+                            spine.indexOf(getPath(tocPath, src?.first()!!)),
+                            if (src.size == 2)src.last() else null
+                        )
+                    }.sortedBy { it.spineIndex }
+                } else { emptyList() }
+            }
 
         val img: MutableList<Img> = mutableListOf()
-        val cover = getCover(manifest, spine)
+        val cover = getCover(spine)
         if (cover!= null) img.add(cover)
 
         if (toc.isEmpty()) {
@@ -101,20 +130,20 @@ class BookParser(file: File, val context: Context) {
         return Pair(list, img)
     }
 
-    fun getToc(element: Element, level: Int = 0): List<Pair<Element, Int>> {
+    fun getToc(element: Element, query: String, level: Int = 0): List<Pair<Element, Int>> {
         val list = mutableListOf<Pair<Element, Int>>()
-        element.select("> navPoint")
-            .forEach {
-                list.add(Pair(it, level))
-                list.addAll(getToc(it, level + 1))
-            }
+        element.select(query).forEach {
+            list.add(Pair(it, level))
+            list.addAll(getToc(it, query,  level + 1))
+        }
         return list
     }
 
-    fun getCover(manifest: Map<String, String>, spine: List<String>) : Img? {
-        if (!manifest["cover"].isNullOrEmpty()) {
-            val path = getPath(opfPath!!,manifest["cover"]!!)
-            return Img("cover", readBytes(path))
+    fun getCover(spine: List<String>) : Img? {
+        val id = opf.selectFirst("meta[name=cover]")?.attr("content")
+        if (id != null) {
+            val href = opf.selectFirst("manifest > item[id=$id]").href()
+            return Img("cover", readBytes(getPath(opfPath!!, href)))
         } else {
             spine.forEach { path ->
                 val img = getDocument(path).selectFirst("img")
@@ -160,7 +189,7 @@ class BookParser(file: File, val context: Context) {
                 val src = match.value
                     .substringAfter("![](").substringBefore(")")
                 Img(
-                    src.split("/").last(),
+                    src.md5(),
                     readBytes(src)
                 ).apply {
                     content = content
